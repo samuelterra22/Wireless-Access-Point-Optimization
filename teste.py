@@ -31,6 +31,10 @@ def calculaDistancia(x1, x2, y1, y2):
     return sqrt((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
 
+def getAccessPointPosition():
+    return [1000, 450]
+
+
 WIDTH = 2000
 HEIGHT = 900
 
@@ -49,8 +53,11 @@ BLUE = (0, 0, 255)
 
 for x in range(2000):
     for y in range(900):
-        color = getRandomColor(random.randint(1, 5))
-        drawPoint(color, x, y)
+        #color = getRandomColor(random.randint(1, 5))
+        drawPoint(BLUE, x, y)
+
+ap = getAccessPointPosition()
+drawPoint(RED, ap[0], ap[1])
 
 # run the game loop
 while True:
