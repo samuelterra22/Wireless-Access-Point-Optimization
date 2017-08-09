@@ -1,0 +1,47 @@
+## Passo 1
+
+# Criar matriz 2000x900 para representar a proporção do CAD
+# Definir a posição do acess point (x, y)
+# Posição inicial do AP mais no centro (1000, 450)
+# Percorrer a matriz a p/ cada posicao da matriz (j, k) calcular a distanicia entre os dois pontos
+# Passar a distância  calculada para a função de propagação
+# Preencher a matriz com o resultado
+
+## Sugestão: utilize o script do GNUplot para ColorMap (Vinícius), exportando sua matriz como uma célula por linha de
+#    arquivo, transformando a matriz numa lista de 2000*900 linhas de arquivo. O script irá plotar uma imagem LIIINDA
+
+## Passo 2
+
+# Pegar aquela saida do DFX com as linhas das paredes, consegue montar uma matriz auxiliar onde terá FALSE para preto
+# e TRUE para AZUL, ou melhor, FALSE quando for espaço livre e AZUL quando tiver "dentro" de uma parede (a parede pode
+# ultrapassar mais de uma célula da matriz |...| )
+
+
+## Passo 3
+
+# Já sabemos onde estão as paredes
+# Percorremos a matriz por linhas e colunas. Para cada inicio de linha terei uma variavel paredesAtravessadas = 0
+# Se na posição j,k da matriz o espaço for vazio, aplico a formula de propagação como no passo 1
+# Se na posição j,k da matriz tiver uma parede, paredesAtravessadas++,
+#    aplico a formula de propagação como no passo 1, subtraio o valor da paredesAtravessadas * absoçãoPorParede
+# OBS.: absorçãoDaParede pode ser medido empiricamente ou consultado numa tabela do livro. RAPPAPORT Comunicação Sem Fio (BV Pearson)
+# Continuando naquela linha, mantenho paredesAtravessadas com o novo valor, sempre subtraindo as paredes dali para frente
+# Acabou a linha e começou a próxima, paredesAtravessadas = 0
+
+## Passo 4: compare os valores da simulação de propagação com os valores da medição real. Ajuste os parâmetros (ganho antena,
+# absorção da parede, etc)
+
+## Passo 5:
+# implemente algum algoritmo de Pesquisa Operacional para explorar o espaço de possíveis posições pro AP
+# para cada posição, calcule toda a matriz de propagação e gere um valor que a represente => função objetivo (ex.: FO poderia ser
+# some todas as céĺulas). Deixe o alg.PO explorar posições enquanto melhorar a FO... etc
+# Ao final do alg.PO, terá a malhor posição de UM AP de acordo com o ambiente (paredes)
+
+## Passo 6:
+# altere o algoritmo de PO para trabalhar simultaneamente com mais de um AP, ex.: para cada um calcule e some as matrizes e gere uma
+# FO global, deixando o algoritmo explorar o espaço e as posições de APs. Ao final terá um ótimo local com posições candidatas para os APs
+
+## Passo 7:
+# se ainda der tempo, aumentar a precição da propagação (paredes de grossuras diferentes, interação entre mais de 3 APs = coloração de grafos)
+# se ainda der tempo, ilustrar o processo com o pyGames
+# se ainda der tempo, colocar na FO também a demanda de APs de acordo com a densidade de pessoas (trabalho de disciplina com o Calixto)
