@@ -7,7 +7,9 @@
 #im.show()
 
 
-import pygame, sys, time
+import pygame
+import sys
+import time
 from pygame.locals import *
 
 pygame.init()
