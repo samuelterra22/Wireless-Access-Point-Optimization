@@ -1,4 +1,5 @@
 import random
+from math import sqrt
 
 import pygame
 import sys
@@ -25,6 +26,9 @@ def getRandomColor(color):
         return GREEN
     elif color == 5:
         return BLUE
+
+def calculaDistancia(x1, x2, y1, y2):
+    return sqrt((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
 
 WIDTH = 2000
