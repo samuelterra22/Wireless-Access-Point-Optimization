@@ -1,3 +1,16 @@
+#   Referências
+#
+#   PyGmae Draw lines: http://nullege.com/codes/show/src%40g%40a%40GameDevelopment-HEAD%40examples%40pygame%40raspberry_pi%40python_games%40drawing.py/20/pygame.draw.line/python
+#   https://www.cs.ucsb.edu/~pconrad/cs5nm/topics/pygame/drawing/
+#
+#   https://file.scirp.org/pdf/CN_2016022911455146.pdf
+#   http://sbrt.org.br/sbrt2012/publicacoes/98766_1.pdf
+#
+#
+
+
+
+
 ## Passo 1
 
 # Criar matriz 2000x900 para representar a proporção do CAD
