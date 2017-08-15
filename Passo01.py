@@ -1,7 +1,7 @@
 import random
 import sys
 import time
-from math import sqrt, pi
+from math import sqrt, pi, log10
 
 import pygame
 from pygame.locals import *
@@ -51,12 +51,32 @@ def frequency():
 
 
 def wave_length():
+    """
+    Velocidade da luz / frequência do canal
+    """
     C = 299792458
-    return C/frequency()
+    return C / frequency()
+
+
+def path_loss(d):
+    """
+    Perda no caminho (Path Loss) mensurado em dB
+    """
+    return 20 * log10((4 * pi * d) / wave_length())
+
+
+def two_ray_ground_reflection_model(Pt, Gt, Gr, Ht, Hr, d, L):
+    """
+    Pr
+    """
+    return (Pt * Gt * Gr * pow(Ht, 2) * pow(Hr, 2)) / (pow(d, 4) * L)
 
 
 def free_space_model(Pt, Gt, Gr, lamb, d, L):
-    return (Pt*Gt*Gr*(pow(lamb, 2))) / pow((4*pi), 2) * pow(d, 2) * L
+    """
+    Pr
+    """
+    return (Pt * Gt * Gr * (pow(lamb, 2))) / (pow((4 * pi), 2) * pow(d, 2) * L)
 
 
 pygame.init()
