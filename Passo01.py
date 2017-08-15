@@ -25,7 +25,7 @@ pygame.init()
 
 
 def draw_line(x1, y1, x2, y2):
-    pass
+    pygame.draw.line(DISPLAYSURF, color, (x1, y1), (x2, y2))
 
 
 def draw_point(color, x, y):
