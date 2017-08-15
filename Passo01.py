@@ -1,10 +1,8 @@
-import random
-import sys
-import time
+from datetime import datetime
 from math import sqrt, pi, log10
 
+import numpy as np
 import pygame
-from pygame.locals import *
 
 WIDTH = 2000
 HEIGHT = 900
@@ -15,6 +13,8 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+
+pygame.init()
 
 
 def draw_line(x1, y1, x2, y2):
@@ -38,8 +38,8 @@ def get_random_color(color):
         return BLUE
 
 
-def calc_distance(x1, x2, y1, y2):
-    return sqrt((x2 - x1) ** 2) + ((y2 - y1) ** 2)
+def calc_distance(x1, y1, x2, y2):
+    return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
 
 
 def get_access_point_position():
@@ -61,6 +61,8 @@ def wave_length():
 def path_loss(d):
     """
     Perda no caminho (Path Loss) mensurado em dB
+    :param d: Distâcia
+    :return: Perda no caminho
     """
     return 20 * log10((4 * pi * d) / wave_length())
 
@@ -79,30 +81,56 @@ def free_space_model(Pt, Gt, Gr, lamb, d, L):
     return (Pt * Gt * Gr * (pow(lamb, 2))) / (pow((4 * pi), 2) * pow(d, 2) * L)
 
 
-pygame.init()
+def log_distance(d0, d, gamma):
+    """
+    Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
+    e do ganho das antenas transmissora e receptora
+    """
+    # return path_loss(d) + 10 * gamma * log10(d / d0)
+    return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+
+
+def propagation_model():
+    return 0
+
+
+def imprime_matriz_resultados(matriz):
+    print("Escrevendo matriz no arquivo de saida...")
+    print("Dimanções na matriz: " + str(np.shape(matriz)))
+    f = open('saida_passo_01', 'w')
+    for linha in matriz:
+        for valor in linha:
+            f.write(str(valor) + "\t")
+        f.write('\n')
+    f.close()
+    print("Matriz salva no arquivo.")
+
+
+inicio = datetime.now()
 
 # set up the window
 DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('Drawing')
+pygame.display.set_caption('Simulando...')
 
-# set up the colors
+matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
 
-
-for x in range(2000):
-    for y in range(900):
-        color = get_random_color(random.randint(1, 5))
+for x in range(WIDTH):
+    for y in range(HEIGHT):
+        color = BLUE
         draw_point(color, x, y)
-        # draw_point(BLUE, x, y)
+        matrix_results[x][y] = propagation_model()
 
 ap = get_access_point_position()
 draw_point(RED, ap[0], ap[1])
 
-# run the game loop
-while True:
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
+pygame.display.update()
+imprime_matriz_resultados(matrix_results)
 
-    pygame.display.update()
-    time.sleep(5)
+fim = datetime.now()
+
+print("\nInicio: \t" + str(inicio.time()))
+print("Fim: \t\t" + str(fim.time()))
+print("Duração \t" + str((fim - inicio).seconds) + " segundos.\n")
+
+pygame.display.set_caption('Simulação terminada')
+input('Precione qualquer tecla para encerrar a aplicação.')
