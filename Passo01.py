@@ -1,21 +1,31 @@
 import random
-from math import sqrt
-
-import pygame
 import sys
 import time
+from math import sqrt, pi
+
+import pygame
 from pygame.locals import *
 
+WIDTH = 2000
+HEIGHT = 900
+CHANNEL = 9
 
-def drawLine(x1, y1, x2, y2):
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+
+
+def draw_line(x1, y1, x2, y2):
     pass
 
 
-def drawPoint(color, x, y):
+def draw_point(color, x, y):
     pygame.draw.line(DISPLAYSURF, color, (x, y), (x, y))
 
 
-def getRandomColor(color):
+def get_random_color(color):
     if color == 1:
         return BLACK
     elif color == 2:
@@ -27,19 +37,27 @@ def getRandomColor(color):
     elif color == 5:
         return BLUE
 
-def calculaDistancia(x1, x2, y1, y2):
+
+def calc_distance(x1, x2, y1, y2):
     return sqrt((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
 
-def getAccessPointPosition():
+def get_access_point_position():
     return [1000, 450]
 
-def twoRay(Pt, ):
-    return
+
+def frequency():
+    return (2.407 + (5 * CHANNEL) / 1000) * 10 ** 9
 
 
-WIDTH = 2000
-HEIGHT = 900
+def wave_length():
+    C = 299792458
+    return C/frequency()
+
+
+def free_space_model(Pt, Gt, Gr, lamb, d, L):
+    return (Pt*Gt*Gr*(pow(lamb, 2))) / pow((4*pi), 2) * pow(d, 2) * L
+
 
 pygame.init()
 
@@ -48,20 +66,16 @@ DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.display.set_caption('Drawing')
 
 # set up the colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
+
 
 for x in range(2000):
     for y in range(900):
-        color = getRandomColor(random.randint(1, 5))
-        drawPoint(color, x, y)
-        #drawPoint(BLUE, x, y)
+        color = get_random_color(random.randint(1, 5))
+        draw_point(color, x, y)
+        # draw_point(BLUE, x, y)
 
-ap = getAccessPointPosition()
-drawPoint(RED, ap[0], ap[1])
+ap = get_access_point_position()
+draw_point(RED, ap[0], ap[1])
 
 # run the game loop
 while True:
