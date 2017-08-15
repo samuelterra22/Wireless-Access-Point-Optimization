@@ -1,11 +1,18 @@
+import tkinter as tk
 from datetime import datetime
 from math import sqrt, pi, log10
 
 import numpy as np
 import pygame
 
-WIDTH = 2000
-HEIGHT = 900
+
+def get_monitor_size():
+    root = tk.Tk()
+    return root.winfo_screenwidth(), root.winfo_screenheight()
+
+
+WIDTH = get_monitor_size()[0] - 100
+HEIGHT = get_monitor_size()[1] - 100
 CHANNEL = 9
 
 BLACK = (0, 0, 0)
