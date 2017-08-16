@@ -11,8 +11,8 @@ def get_monitor_size():
     return root.winfo_screenwidth(), root.winfo_screenheight()
 
 
-WIDTH = get_monitor_size()[0] - 100
-HEIGHT = get_monitor_size()[1] - 100
+WIDTH = get_monitor_size()[0] - 100  # Retira 100pxs para folga
+HEIGHT = get_monitor_size()[1] - 100  # Retira 100pxs para folga
 CHANNEL = 9
 
 BLACK = (0, 0, 0)
