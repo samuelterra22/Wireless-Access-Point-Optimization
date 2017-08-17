@@ -5,6 +5,8 @@ from math import sqrt, pi, log10
 import numpy as np
 import pygame
 
+import random
+
 
 def get_monitor_size():
     root = tk.Tk()
@@ -15,11 +17,31 @@ WIDTH = get_monitor_size()[0] - 100  # Retira 100pxs para folga
 HEIGHT = get_monitor_size()[1] - 100  # Retira 100pxs para folga
 CHANNEL = 9
 
+COLORS = [
+    (214, 42, 42),
+    (223, 0, 0),
+    (255, 15, 0),
+    (255, 93, 0),
+    (255, 144, 0),
+    (255, 186, 14),
+    (255, 255, 49),
+    (255, 249, 156),
+    (179, 223, 244),
+    (126, 202, 239),
+    (28, 191, 251),
+    (15, 163, 255),
+    (38, 131, 246),
+    (63, 105, 226),
+    (22, 42, 244),
+    (54, 12, 249)
+]
+
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+
 
 pygame.init()
 
@@ -98,7 +120,7 @@ def log_distance(d0, d, gamma):
 
 
 def propagation_model():
-    return 0
+    return random.randint(0, 9)
 
 
 def imprime_matriz_resultados(matriz):
@@ -112,32 +134,77 @@ def imprime_matriz_resultados(matriz):
     f.close()
     print("Matriz salva no arquivo.")
 
+def get_percentage_of_range(min, max, x):
+    """
+    Método responsável por retornar a porcentagem de acordo com um respectivo intervalo
+    :param min: Valor mínimo do intervalo
+    :param max: Valor máximo do intervalo
+    :param x: Valor que está no intervalo de min-max que deseja saber sua respectiva porcentagem
+    :return: Retorna uma porcentagem que está de acordo com o intervalo min-max
+    """
+    return ((x-min)/(max-min))*100
 
-inicio = datetime.now()
+def get_value_in_list(percent, list):
+    """
+    Método retorna o valor de uma posição de uma lista. A posição é calculada de acordo a porcentagem.
+    :param percent: Valor float representando a porcentagem
+    :param list: Lista com n números
+    :return: Retorna o valor da posição calculada
+    """
+    position = (percent/100) * len(list)
+    if position < 1:
+        position = 1
+    elif position >= len(list):
+        position = len(list)
+    return list[int(position-1)]
 
-# set up the window
-DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('Simulando...')
 
-matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+def get_color_of_interval(min, max, x):
+    """
+    Este método retorna uma cor de acordo com o valor que está entre o intervalo min-max. Em outras palavras,
+    este método transforma um número em uma cor dentro de uma faixa informada.
+    :param min: Valor mínimo do intervalo
+    :param max: Valor máximo do intervalo
+    :param x: Valor que está dentro do intervalo e que deseja saber sua cor
+    :return: Retorna uma tupla representando um cor no formato RGB.
+    """
+    percentage = get_percentage_of_range(min, max, x)
 
-for x in range(WIDTH):
-    for y in range(HEIGHT):
-        color = BLUE
-        draw_point(color, x, y)
-        matrix_results[x][y] = propagation_model()
 
-ap = get_access_point_position()
-draw_point(RED, ap[0], ap[1])
 
-pygame.display.update()
-imprime_matriz_resultados(matrix_results)
+# inicio = datetime.now()
+#
+# # set up the window
+# DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+# pygame.display.set_caption('Simulando...')
+#
+# matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+#
+# for x in range(WIDTH):
+#     for y in range(HEIGHT):
+#         color = BLUE
+#         draw_point(color, x, y)
+#         matrix_results[x][y] = propagation_model()
+#
+# ap = get_access_point_position()
+# draw_point(RED, ap[0], ap[1])
+#
+# pygame.display.update()
+# imprime_matriz_resultados(matrix_results)
+#
+# fim = datetime.now()
+#
+# print("\nInicio: \t" + str(inicio.time()))
+# print("Fim: \t\t" + str(fim.time()))
+# print("Duração \t" + str((fim - inicio).seconds) + " segundos.\n")
+#
+# pygame.display.set_caption('Simulação terminada')
+#
+# print("Maior valor da matriz: " + str(matrix_results.max()))
+# print("Menor valor da matriz: " + str(matrix_results.min()))
+#
+# input('Precione qualquer tecla para encerrar a aplicação.')
 
-fim = datetime.now()
+var = get_value_in_list(101, [1,2,3,4,5,6,7,8,9,10])
 
-print("\nInicio: \t" + str(inicio.time()))
-print("Fim: \t\t" + str(fim.time()))
-print("Duração \t" + str((fim - inicio).seconds) + " segundos.\n")
-
-pygame.display.set_caption('Simulação terminada')
-input('Precione qualquer tecla para encerrar a aplicação.')
+print(var)
