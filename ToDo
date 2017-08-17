@@ -16,6 +16,14 @@
 #
 #   Obter resolução da tela: https://www.blog.pythonlibrary.org/2015/08/18/getting-your-screen-resolution-with-python/
 #
+
+
+#   Instalações necessárias:
+#
+#   * tkinter       ->  apt-get install python3-tk
+#   * pygame        ->  sudo apt-get install python3-setuptools,    sudo pip3 install pygame
+#   * python 3.5
+#   * numpy         ->  sudo pip3 install numpy
 #
 
 
