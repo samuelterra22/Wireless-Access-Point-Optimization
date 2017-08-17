@@ -5,10 +5,12 @@ from math import sqrt, pi, log10
 import numpy as np
 import pygame
 
-import random
-
 
 def get_monitor_size():
+    """
+    Método que identifica o tamanho da tela do computador.
+    :return: Retorna os valores de largura e altura.
+    """
     root = tk.Tk()
     return root.winfo_screenwidth(), root.winfo_screenheight()
 
@@ -42,7 +44,7 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
-
+# Inicia o PyGame
 pygame.init()
 
 
@@ -54,28 +56,30 @@ def draw_point(color, x, y):
     pygame.draw.line(DISPLAYSURF, color, (x, y), (x, y))
 
 
-def get_random_color(color):
-    if color == 1:
-        return BLACK
-    elif color == 2:
-        return WHITE
-    elif color == 3:
-        return RED
-    elif color == 4:
-        return GREEN
-    elif color == 5:
-        return BLUE
-
-
 def calc_distance(x1, y1, x2, y2):
+    """
+    Método responsável por realizar o calculo da distância entre dois pontos no plano cartesiano.
+    :param x1: Valor de X no ponto 1.
+    :param y1: Valor de Y no ponto 1.
+    :param x2: Valor de X no ponto 2.
+    :param y2: Valor de Y no ponto 2.
+    :return: Retorna um valor float representando a distância dos pontos informados.
+    """
     return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
 
 
 def get_access_point_position():
-    return [1000, 450]
+    # return [1000, 450]
+    # return [0, 0]
+    # return [100, 900]
+    return [159, 357]
 
 
 def frequency():
+    """
+    Calcula a frequência de acordo com o canal
+    :return: Frequência do canal
+    """
     return (2.407 + (5 * CHANNEL) / 1000) * 10 ** 9
 
 
@@ -114,16 +118,31 @@ def log_distance(d0, d, gamma):
     """
     Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
     e do ganho das antenas transmissora e receptora
+    :param d0: Distância do ponto de referência d0
+    :param d:
+    :param gamma: Valor da constante de propagação que difere para cada tipo de ambiente.
+    :return:
     """
     # return path_loss(d) + 10 * gamma * log10(d / d0)
     return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
 
 
-def propagation_model():
-    return random.randint(0, 9)
+def propagation_model(x, y):
+    access_point = get_access_point_position()
+    d = calc_distance(x, y, access_point[0], access_point[1])
+    if d == 0:
+        d = 1
+    gamma = 5
+
+    return log_distance(1, d, gamma)
 
 
-def imprime_matriz_resultados(matriz):
+def print_matriz(matriz):
+    """
+    Método responsável por imprimir a matriz em um arquivo
+    :param matriz: Matriz N x M
+    :return: None
+    """
     print("Escrevendo matriz no arquivo de saida...")
     print("Dimanções na matriz: " + str(np.shape(matriz)))
     f = open('saida_passo_01', 'w')
@@ -134,6 +153,7 @@ def imprime_matriz_resultados(matriz):
     f.close()
     print("Matriz salva no arquivo.")
 
+
 def get_percentage_of_range(min, max, x):
     """
     Método responsável por retornar a porcentagem de acordo com um respectivo intervalo
@@ -142,7 +162,8 @@ def get_percentage_of_range(min, max, x):
     :param x: Valor que está no intervalo de min-max que deseja saber sua respectiva porcentagem
     :return: Retorna uma porcentagem que está de acordo com o intervalo min-max
     """
-    return ((x-min)/(max-min))*100
+    return ((x - min) / (max - min)) * 100
+
 
 def get_value_in_list(percent, list):
     """
@@ -151,12 +172,12 @@ def get_value_in_list(percent, list):
     :param list: Lista com n números
     :return: Retorna o valor da posição calculada
     """
-    position = (percent/100) * len(list)
+    position = (percent / 100) * len(list)
     if position < 1:
         position = 1
     elif position >= len(list):
         position = len(list)
-    return list[int(position-1)]
+    return list[int(position - 1)]
 
 
 def get_color_of_interval(min, max, x):
@@ -169,42 +190,61 @@ def get_color_of_interval(min, max, x):
     :return: Retorna uma tupla representando um cor no formato RGB.
     """
     percentage = get_percentage_of_range(min, max, x)
+    color = get_value_in_list(percentage, COLORS)
+    # print('Color: ' + str(color))
+    return color
 
 
+print("Iniciando simulação.")
 
-# inicio = datetime.now()
-#
-# # set up the window
-# DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-# pygame.display.set_caption('Simulando...')
-#
-# matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
-#
-# for x in range(WIDTH):
-#     for y in range(HEIGHT):
-#         color = BLUE
-#         draw_point(color, x, y)
-#         matrix_results[x][y] = propagation_model()
-#
-# ap = get_access_point_position()
-# draw_point(RED, ap[0], ap[1])
-#
-# pygame.display.update()
-# imprime_matriz_resultados(matrix_results)
-#
-# fim = datetime.now()
-#
-# print("\nInicio: \t" + str(inicio.time()))
-# print("Fim: \t\t" + str(fim.time()))
-# print("Duração \t" + str((fim - inicio).seconds) + " segundos.\n")
-#
-# pygame.display.set_caption('Simulação terminada')
-#
-# print("Maior valor da matriz: " + str(matrix_results.max()))
-# print("Menor valor da matriz: " + str(matrix_results.min()))
-#
-# input('Precione qualquer tecla para encerrar a aplicação.')
+# Marca o inicio da simulação
+inicio = datetime.now()
 
-var = get_value_in_list(101, [1,2,3,4,5,6,7,8,9,10])
+# Configura o tamanho da janela
+DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+pygame.display.set_caption('Simulando...')
 
-print(var)
+# Cria uma matriz para guardar os resultados calculados
+matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+
+print("Posição do access point: " + str(get_access_point_position()))
+
+# Preenche a matriz de resultados usando um modelo de propagação
+for x in range(WIDTH):
+    for y in range(HEIGHT):
+        value = propagation_model(x, y)
+        matrix_results[x][y] = value
+
+# Guarda os valores máximo e mínimo da matriz
+matrix_max_value = matrix_results.max()
+matrix_min_value = matrix_results.min()
+
+# Lê os valores da matriz que contêm valores calculados e colore
+for x in range(WIDTH):
+    for y in range(HEIGHT):
+        color = get_color_of_interval(matrix_min_value, matrix_max_value, matrix_results[x][y])
+        draw_point(color, x, y)
+
+# Pinta de vermelho a posição do Access Point
+ap = get_access_point_position()
+draw_point(RED, ap[0], ap[1])
+
+# Atualiza a janela do PyGame para que exiba a imagem
+pygame.display.update()
+# Grava os valores da matriz no arquivo
+print_matriz(matrix_results)
+
+# Marca o fim da simulação
+fim = datetime.now()
+
+print("\nInicio: \t" + str(inicio.time()))
+print("Fim: \t\t" + str(fim.time()))
+print("Duração: \t" + str((fim - inicio).seconds) + " segundos.\n")
+
+pygame.display.set_caption('Simulação terminada')
+print('Simulação terminada.')
+
+print("Maior valor da matriz: " + str(matrix_max_value))
+print("Menor valor da matriz: " + str(matrix_min_value))
+
+input('\nPrecione qualquer tecla para encerrar a aplicação.')
