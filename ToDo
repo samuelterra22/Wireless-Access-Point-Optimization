@@ -16,6 +16,15 @@
 #
 #   Obter resolução da tela: https://www.blog.pythonlibrary.org/2015/08/18/getting-your-screen-resolution-with-python/
 #
+#   Converter cor hexadecimal para RGB: https://stackoverflow.com/questions/29643352/converting-hex-to-rgb-value-in-python
+#
+#   Paleta de cores:
+#   http://bokeh.pydata.org/en/latest/docs/reference/palettes.html
+#   https://github.com/bokeh/bokeh/blob/master/bokeh/palettes.py
+#
+#
+#
+#
 
 
 #   Instalações necessárias:
@@ -40,8 +49,12 @@
 
 ## Sugestão: utilize o script do GNUplot para ColorMap (Vinícius), exportando sua matriz como uma célula por linha de
 #    arquivo, transformando a matriz numa lista de 2000*900 linhas de arquivo. O script irá plotar uma imagem LIIINDA
+#
+#   Ao invés de pegar cores com saltos linares, pegar cores num intervalo quadratico
+#
+#
 
-## Passo 2
+## Passo 2 (deixar pra depois, pule para o passo 5)
 
 # Pegar aquela saida do DFX com as linhas das paredes, consegue montar uma matriz auxiliar onde terá FALSE para preto
 # e TRUE para AZUL, ou melhor, FALSE quando for espaço livre e AZUL quando tiver "dentro" de uma parede (a parede pode
@@ -61,6 +74,7 @@
 
 ## Passo 4: compare os valores da simulação de propagação com os valores da medição real. Ajuste os parâmetros (ganho antena,
 # absorção da parede, etc)
+
 
 ## Passo 5:
 # implemente algum algoritmo de Pesquisa Operacional para explorar o espaço de possíveis posições pro AP
