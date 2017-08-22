@@ -40,6 +40,13 @@
 #
 #
 
+# Tentar filtrar o DXF pelas localizações dos pontos elétricos
+# Limitar as possível localizações dos APs na proximidade (50 cm) dos pontos de energia.
+#
+#
+#
+
+
 ## Passo 1
 
 # Criar matriz 2000x900 para representar a proporção do CAD
@@ -82,7 +89,8 @@
 # implemente algum algoritmo de Pesquisa Operacional para explorar o espaço de possíveis posições pro AP
 # para cada posição, calcule toda a matriz de propagação e gere um valor que a represente => função objetivo (ex.: FO poderia ser
 # some todas as céĺulas). Deixe o alg.PO explorar posições enquanto melhorar a FO... etc
-# Ao final do alg.PO, terá a malhor posição de UM AP de acordo com o ambiente (paredes)
+# Ao final do alg.PO, terá a malhor posição de UM AP de acordo com o ambiente
+# Montar a escala de cores e escala da planta.
 
 ## Passo 6:
 # altere o algoritmo de PO para trabalhar simultaneamente com mais de um AP, ex.: para cada um calcule e some as matrizes e gere uma
