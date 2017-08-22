@@ -26,7 +26,6 @@
 #
 #
 
-
 #   Instalações necessárias:
 #
 #   * tkinter       ->  apt-get install python3-tk
@@ -35,8 +34,11 @@
 #   * numpy         ->  sudo pip3 install numpy
 #
 
-
-
+# Modelar:
+# - Point
+# - Access Point
+#
+#
 
 ## Passo 1
 
