@@ -358,5 +358,5 @@ class Placement(object):
 if __name__ == '__main__':
     p = Placement()
     access_point = [159, 357]
-    m = p.simulate(save_matrix=False, show_pygame=True, access_point=access_point)
+    m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
     print(p.objective_function(matrix=m))
