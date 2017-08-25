@@ -2,6 +2,7 @@
 #   https://pt.wikipedia.org/wiki/Simulated_annealing
 #   https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
 #   https://stackoverflow.com/questions/19720445/invert-negative-values-in-a-list
+#   https://www.ime.usp.br/~ghaeser/Hae_Gom.pdf
 
 from math import sqrt, exp
 from random import random
