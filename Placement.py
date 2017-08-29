@@ -22,8 +22,8 @@ class Placement(object):
         # self.WIDTH = self.get_monitor_size()[0] - 100  # Retira 100pxs para folga
         # self.HEIGHT = self.get_monitor_size()[1] - 100  # Retira 100pxs para folga
 
-        self.WIDTH = 200
-        self.HEIGHT = 200
+        self.WIDTH = 100
+        self.HEIGHT = 100
 
         self.comprimento_planta = 800
         self.largura_planta = 600
@@ -218,7 +218,7 @@ class Placement(object):
         matrix_max_value = matrix_results.max()
         matrix_min_value = matrix_results.min()
 
-        print("Desenhando simulação com PyGame...")
+        # print("Desenhando simulação com PyGame...")
 
         # Lê os valores da matriz que contêm valores calculados e colore
         for x in range(self.WIDTH):
@@ -415,7 +415,7 @@ class Placement(object):
         :return:
         """
         # Obtem um ponto aleatorio em um raio de X metros
-        rand_point = self.get_point_in_circle(point=S, ray=20)
+        rand_point = self.get_point_in_circle(point=S, ray=2)
 
         return rand_point
 
@@ -442,13 +442,14 @@ class Placement(object):
 
         rand = random()
 
-        print("Randomiza: " + str(rand))
+        # print("Randomiza: " + str(rand))
 
         return rand
 
-    def simulated_annealing(self, S0, M, P, L, alpha, debug=False):
+    def simulated_annealing(self, S0, M, P, L, T0, alpha, debug=False):
         """
 
+        :param T0:
         :param S0: Configuração Inicial (Entrada) -> Ponto?;
         :param M: Número máximo de iterações (Entrada);
         :param P: Número máximo de Perturbações por iteração (Entrada);
@@ -457,7 +458,6 @@ class Placement(object):
         :return: Retorna um ponto sendo o mais indicado
         """
         S = S0
-        T0 = self.temperatura_inicial()  # Pode ser passado por paramentro?
         T = T0
         j = 1
 
@@ -484,8 +484,10 @@ class Placement(object):
                 # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
                 deltaFi = self.f(Si) - self.f(S)
 
-                print("deltaFi: " + str(deltaFi))
+                # print("deltaFi: " + str(deltaFi))
 
+                ## Minimização: deltaFi >= 0
+                ## Maximização: deltaFi <= 0
                 # Teste de aceitação de uma nova solução
                 if (deltaFi <= 0) or (exp(-deltaFi / T) > self.randomiza()):
                     # print("Ponto escolhido: " + str(Si))
@@ -519,12 +521,22 @@ if __name__ == '__main__':
     # print(p.objective_function(matrix=m))
 
     access_point = [0, 0]
-    max_inter = 100
-    max_pertub = 10
-    num_max_succ = 10
+    ##fixo
+    max_inter = 1000
+
+    ## p
+    max_pertub = 20
+
+    ## v
+    num_max_succ = 20
+
+    ## a
     alpha = .987
 
-    point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, alpha=alpha, debug=True)
+    ## t
+    temp_inicial = 100
+
+    point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial, alpha=alpha, debug=False)
 
     print("Melhor ponto sugerido pelo algoritmo: " + str(point))
     input('\nPrecione qualquer tecla para encerrar a aplicação.')

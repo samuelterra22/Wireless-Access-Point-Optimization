@@ -30,8 +30,9 @@
 #
 #   * tkinter       ->  apt-get install python3-tk
 #   * pygame        ->  sudo apt-get install python3-setuptools,    sudo pip3 install pygame
-#   * python 3.5
+#   * python 3.5    ->  sudo apt-get update,    sudo apt-get install python3
 #   * numpy         ->  sudo pip3 install numpy
+#   * matplotlib    ->  sudo pip3 install matplotlib
 #
 
 # Modelar:
@@ -94,7 +95,7 @@
 
 ## Passo 6:
 # altere o algoritmo de PO para trabalhar simultaneamente com mais de um AP, ex.: para cada um calcule e some as matrizes e gere uma
-# FO global, deixando o algoritmo explorar o espaço e as posições de APs. Ao final terá um ótimo local com posições candidatas para os APs
+# FO global, deixando o algoritmo explorar o espaço e as posições de APs. Ao final terá um ótimo local com posições candidatas para os APs.
 
 ## Passo 7:
 # se ainda der tempo, aumentar a precição da propagação (paredes de grossuras diferentes, interação entre mais de 3 APs = coloração de grafos)
