@@ -57,7 +57,7 @@ def get_points_in_circle(ray, point, round_values=True, num=1, absolute_values=T
         return [x, y]
 
 
-def TemperaturaInicial():
+def temperatura_inicial():
     """
     Função que calcula a temperatura inicial;
     :return:
@@ -65,7 +65,7 @@ def TemperaturaInicial():
     return 100
 
 
-def Pertuba(S):
+def pertuba(S, matrix):
     """
      Função que realiza uma perturbação na Solução S;
      Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação
@@ -84,18 +84,17 @@ def f(x):
     return 0
 
 
-def Randomiza():
+def randomiza():
     """
     Função que gera um número aleatório no intervalo [0,1];
     :return:
     """
     return random.random()
 
-
-def sa(S0, M, P, L, alpha):
+def simulated_annealing(S0, M, P, L, alpha, matrix):
     """
 
-    :param S0: Configuração Inicial (Entrada);
+    :param S0: Configuração Inicial (Entrada) -> Ponto?;
     :param M: Número máximo de iterações (Entrada);
     :param P: Número máximo de Perturbações por iteração (Entrada);
     :param L: Número máximo de sucessos por iteração (Entrada);
@@ -103,7 +102,7 @@ def sa(S0, M, P, L, alpha):
     :return:
     """
     S = S0
-    T0 = TemperaturaInicial()
+    T0 = temperatura_inicial()   # Pode ser passado por paramentro?
     T = T0
     j = 1
 
@@ -115,11 +114,11 @@ def sa(S0, M, P, L, alpha):
         # Loop Interno – Realização de perturbação em uma iteração
         while True:
 
-            Si = Pertuba(S)
-            deltaFi = f(Si) - f(S)
+            Si = pertuba(S, matrix)         # Tera que mandar o ponto atual e a matriz tbm. Realiza a simulação
+            deltaFi = f(Si) - f(S)  # Verificar se o retorno da função objetivo está correto.
 
             # Teste de aceitação de uma nova solução
-            if (deltaFi <= 0) or (exp(-deltaFi / T) > Randomiza()):
+            if (deltaFi <= 0) or (exp(-deltaFi / T) > randomiza()):
                 S = Si
                 nSucesso = nSucesso + 1
 
@@ -128,7 +127,7 @@ def sa(S0, M, P, L, alpha):
             if (nSucesso >= L) or (i > P):
                 break
 
-        # Atualização da temperatura
+        # Atualização da temperatura (Deicaimento geométrico)
         T = alpha * T
 
         # Atualização do contador de iterações
