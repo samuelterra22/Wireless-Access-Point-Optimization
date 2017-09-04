@@ -15,7 +15,7 @@ class Placement(object):
     Point Informado.
     """
 
-    def __init__(self):
+    def __init__(self, debug=False):
         """
         Contrutor da classe Placement.
         """
@@ -34,11 +34,13 @@ class Placement(object):
         # tamanho da matriz = dimensão da planta / precisão
 
         self.proporcao_planta = self.comprimento_planta / self.largura_planta
-        self.WIDTH = int(self.HEIGHT * self.proporcao_planta)
+        # self.WIDTH = int(self.HEIGHT * self.proporcao_planta)
 
-        print("Dimensão da planta: " + str(self.comprimento_planta) + "x" + str(self.largura_planta))
-        print("Precisão de " + str(self.precisao) + " metros.")
-        print("Escala de 1:" + str(self.escala) + ".")
+        if debug:
+            print("Dimensão da planta: " + str(self.comprimento_planta) + "x" + str(self.largura_planta))
+            print("Dimensão da matriz de valores: " + str(self.WIDTH) + "x" + str(self.HEIGHT))
+            print("Precisão de " + str(self.precisao) + " metros.")
+            print("Escala de 1:" + str(self.escala) + ".")
 
         self.CHANNEL = 9
 
@@ -81,6 +83,9 @@ class Placement(object):
         self.RED = (255, 0, 0)
         self.GREEN = (0, 255, 0)
         self.BLUE = (0, 0, 255)
+
+        # print("W" + str(self.WIDTH))
+        # print("H" + str(self.HEIGHT))
 
     def get_monitor_size(self):
         """
@@ -309,7 +314,7 @@ class Placement(object):
         matrix_results = np.zeros(shape=(self.WIDTH, self.HEIGHT))
         # matrix_results = np.zeros(shape=(int(self.largura_planta / self.precisao), int(self.comprimento_planta / self.precisao)))
 
-        print("Posição do access point: " + str(access_point))
+        # print("Posição do access point: " + str(access_point))
 
         # Preenche a matriz de resultados usando um modelo de propagação
         for x in range(self.WIDTH):
@@ -415,9 +420,7 @@ class Placement(object):
         :return:
         """
         # Obtem um ponto aleatorio em um raio de X metros
-        rand_point = self.get_point_in_circle(point=S, ray=2)
-
-        return rand_point
+        return self.get_point_in_circle(point=S, ray=2)
 
     def f(self, x):
         """
@@ -426,11 +429,11 @@ class Placement(object):
         :return: Retorna um numero float representando o valor da situação atual.
         """
 
-        matrix_result = p.simulate(save_matrix=False, show_pygame=True, debug=False, access_point=x)
+        matrix_result = self.simulate(save_matrix=False, show_pygame=False, debug=False, access_point=x)
 
         goal = self.objective_function(matrix_result)
 
-        print("Função objetivo: " + str(goal))
+        # print("Função objetivo: " + str(goal))
 
         return goal
 
@@ -468,7 +471,7 @@ class Placement(object):
             print("Número máximo de pertubações por iteração:\t" + str(P))
             print("Número máximo de sucessos por iteração:\t\t" + str(L))
             print("Decaimento da teperatura com α=\t\t\t\t" + str(alpha))
-            input("Aperte qualquer tecla para continuar.")
+            # input("Aperte qualquer tecla para continuar.")
 
         # Loop principal – Verifica se foram atendidas as condições de termino do algoritmo
         while True:
@@ -514,29 +517,30 @@ class Placement(object):
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
-if __name__ == '__main__':
-    p = Placement()
-    # access_point = [0, 0]
-    # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
-    # print(p.objective_function(matrix=m))
-
-    access_point = [0, 0]
-    ##fixo
-    max_inter = 1000
-
-    ## p
-    max_pertub = 20
-
-    ## v
-    num_max_succ = 20
-
-    ## a
-    alpha = .987
-
-    ## t
-    temp_inicial = 100
-
-    point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial, alpha=alpha, debug=False)
-
-    print("Melhor ponto sugerido pelo algoritmo: " + str(point))
-    input('\nPrecione qualquer tecla para encerrar a aplicação.')
+# if __name__ == '__main__':
+#     p = Placement()
+#     # access_point = [0, 0]
+#     # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
+#     # print(p.objective_function(matrix=m))
+#
+#     access_point = [0, 0]
+#     ##fixo
+#     max_inter = 1000
+#
+#     ## p
+#     max_pertub = 20
+#
+#     ## v
+#     num_max_succ = 20
+#
+#     ## a
+#     alpha = .987
+#
+#     ## t
+#     temp_inicial = 100
+#
+#     point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
+#                                   alpha=alpha, debug=False)
+#
+#     print("Melhor ponto sugerido pelo algoritmo: " + str(point))
+#     input('\nPrecione qualquer tecla para encerrar a aplicação.')
