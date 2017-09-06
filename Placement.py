@@ -22,8 +22,8 @@ class Placement(object):
         # self.WIDTH = self.get_monitor_size()[0] - 100  # Retira 100pxs para folga
         # self.HEIGHT = self.get_monitor_size()[1] - 100  # Retira 100pxs para folga
 
-        self.WIDTH = 100
-        self.HEIGHT = 100
+        self.WIDTH = 401
+        self.HEIGHT = 401
 
         self.comprimento_planta = 800
         self.largura_planta = 600
@@ -494,6 +494,7 @@ class Placement(object):
                 # Teste de aceitação de uma nova solução
                 if (deltaFi <= 0) or (exp(-deltaFi / T) > self.randomiza()):
                     # print("Ponto escolhido: " + str(Si))
+                    ## LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
                     S = Si
                     nSucesso = nSucesso + 1
 
@@ -517,30 +518,45 @@ class Placement(object):
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
-# if __name__ == '__main__':
-#     p = Placement()
-#     # access_point = [0, 0]
-#     # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
-#     # print(p.objective_function(matrix=m))
-#
-#     access_point = [0, 0]
-#     ##fixo
-#     max_inter = 1000
-#
-#     ## p
-#     max_pertub = 20
-#
-#     ## v
-#     num_max_succ = 20
-#
-#     ## a
-#     alpha = .987
-#
-#     ## t
-#     temp_inicial = 100
-#
-#     point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
-#                                   alpha=alpha, debug=False)
-#
-#     print("Melhor ponto sugerido pelo algoritmo: " + str(point))
-#     input('\nPrecione qualquer tecla para encerrar a aplicação.')
+if __name__ == '__main__':
+    p = Placement()
+    # access_point = [0, 0]
+    # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
+    # print(p.objective_function(matrix=m))
+
+    access_point = [0, 0]
+    ## sugestão: sortear o X,Y do ponto inicial (dentro da matriz)
+
+    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
+    max_inter = 600
+
+    ## p
+    max_pertub = 5
+
+    ## v
+    num_max_succ = 80
+
+    ## a
+    alpha = .85
+
+    ## t
+    temp_inicial = 300
+
+    # Marca o tempo do inicio da simulação
+    inicio = datetime.now()
+
+    point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
+                                  alpha=alpha, debug=False)
+
+    # Marca o tempo do fim da simulação
+    fim = datetime.now()
+
+    time_seconds = (fim - inicio).seconds
+    time_minutes = time_seconds / 60
+
+    print("\nInicio: \t" + str(inicio.time()))
+    print("Fim: \t\t" + str(fim.time()))
+    print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
+
+    print("Melhor ponto sugerido pelo algoritmo: " + str(point))
+    input('\nPrecione qualquer tecla para encerrar a aplicação.')
