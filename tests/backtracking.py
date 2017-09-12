@@ -12,38 +12,55 @@ def solveMaze(Maze, position, point):
     N = len(Maze)  # lin
     M = len(Maze[0])  # col
 
+    print(position)
+
     # returns a list of the paths taken
     if position == point:
         return [point]
+
     x, y = position
 
-    if y + 1 < M and x + 1 < N and Maze[x + 1][y + 1] == 0:
-        c = solveMaze(Maze, (x + 1, y + 1), point)
-        if c is not None:
-            return [(x, y)] + c
+    if x <= point[0] and y <= point[1]:
 
-    if x + 1 < N and Maze[x + 1][y] == 0:
-        a = solveMaze(Maze, (x + 1, y), point)
-        if a is not None:
-            return [(x, y)] + a
+        if y + 1 < M and x + 1 < N and x <= point[0] and y <= point[1] and Maze[x + 1][y + 1] == 0:
+            a = solveMaze(Maze, (x + 1, y + 1), point)
+            if a is not None:
+                return [(x, y)] + a
 
-    if y + 1 < M and Maze[x][y + 1] == 0:
-        b = solveMaze(Maze, (x, y + 1), point)
-        if b is not None:
-            return [(x, y)] + b
+        if x + 1 < N and Maze[x + 1][y] == 0:
+            b = solveMaze(Maze, (x + 1, y), point)
+            if b is not None:
+                return [(x, y)] + b
+
+        if y + 1 < M and Maze[x][y + 1] == 0:
+            c = solveMaze(Maze, (x, y + 1), point)
+            if c is not None:
+                return [(x, y)] + c
+    # ---------------------------------------------------------
+    elif x >= point[0] and y >= point[1]:
+
+        if y - 1 >= 0 and x - 1 >= 0 and x >= point[0] and y >= point[1] and Maze[x - 1][y - 1] == 0:
+            d = solveMaze(Maze, (x - 1, y - 1), point)
+            if d is not None:
+                return [(x, y)] + d
+
+        if x - 1 >= 0 and Maze[x - 1][y] == 0:
+            e = solveMaze(Maze, (x - 1, y), point)
+            if e is not None:
+                return [(x, y)] + e
+
+        if y - 1 >= 0 and Maze[x][y - 1] == 0:
+            f = solveMaze(Maze, (x, y - 1), point)
+            if f is not None:
+                return [(x, y)] + f
 
 
 Maze = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
 ]
 
-print(solveMaze(Maze, (9, 4), (0, 0)))
+print(solveMaze(Maze, (0, 4), (4, 0)))
