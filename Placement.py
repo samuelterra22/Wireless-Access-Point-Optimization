@@ -96,12 +96,20 @@ class Placement(object):
         return root.winfo_screenwidth(), root.winfo_screenheight()
 
     def mw_to_dbm(self, mW):
-        """Método que converte a potência recebida dada em mW para dBm"""
+        """
+        Método que converte a potência recebida dada em mW para dBm
+        :param mW: Valor em miliwatts.
+        :return: Valor de miliwatts convertido para decibéis.
+        """
         return 10. * log10(mW)
 
     def dbm_to_mw(self, dBm):
-        """Método que converte a potência recebida dada em dBm para mW."""
-        return 10 ** ((dBm) / 10.)
+        """
+        Método que converte a potência recebida dada em dBm para mW.
+        :param dBm: Valor em decibéis.
+        :return: Valor de decibéis convertidos em miliwatts.
+        """
+        return 10 ** (dBm / 10.)
 
     def hex_to_rgb(self, hex):
         """
@@ -184,8 +192,8 @@ class Placement(object):
         """
         Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
         e do ganho das antenas transmissora e receptora.
-        Livro Comunicações em Fio - Pricipios e Práticas - Rappaport (páginas 91-92)
-        :param d0: Distância do ponto de referência d0
+        Livro Comunicações em Fio - Pricipios e Práticas - Rappaport (páginas 91-92).
+        :param d0: Distância do ponto de referência d0.
         :param d: Distância que desejo calcular a perda do sinal.
         :param gamma: Valor da constante de propagação que difere para cada tipo de ambiente.
         :return: Retorna um float representando a perda do sinal entre a distância d0 e d.
@@ -199,7 +207,7 @@ class Placement(object):
     def propagation_model(self, x, y, access_point):
 
         d = self.calc_distance(x, y, access_point[0], access_point[1])
-        if d == 0:
+        if d == 0: ## WTF?
             d = 1
         gamma = 5
 
@@ -226,6 +234,7 @@ class Placement(object):
         """
         Método responsável por desenhar a simulação usando o PyGame.
         :param matrix_results: Matriz float contendo os resultados da simulação.
+        :param access_point: Posição (x, y) do ponto de acesso.
         :return: None.
         """
         matrix_max_value = matrix_results.max()
@@ -286,9 +295,9 @@ class Placement(object):
 
     def objective_function(self, matrix):
         """
-        Função objetivo para a avaliação da solução atual
-        :param matrix: Matriz a ser avaliada
-        :return: Retorna a soma de todos os elementos da metriz
+        Função objetivo para a avaliação da solução atual.
+        :param matrix: Matriz a ser avaliada.
+        :return: Retorna a soma de todos os elementos da metriz.
         """
         g = 0
         for line in matrix:
@@ -378,7 +387,7 @@ class Placement(object):
         :param num: Número de pontos que deseja gerar. Gera um ponto como default.
         :param debug: Flag que quando informada True, printa na tela o(s) ponto(s) gerados e a distância do ponto de
         referência.
-        :return: Um ponto ou um conjunto de pontos do tipo float
+        :return: Um ponto ou um conjunto de pontos do tipo float.
         """
 
         t = np.random.uniform(0.0, 2.0 * np.pi, num)
@@ -422,10 +431,10 @@ class Placement(object):
 
     def pertuba(self, S):
         """
-         Função que realiza uma perturbação na Solução S;
-         Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação
-        :param S: Ponto atual
-        :return:
+         Função que realiza uma perturbação na Solução S.
+         Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
+        :param S: Ponto atual.
+        :return: Retorna um ponto dentro do raio informado.
         """
         # Obtem um ponto aleatorio em um raio de X metros
         return self.get_point_in_circle(point=S, ray=2)
@@ -460,13 +469,13 @@ class Placement(object):
     def simulated_annealing(self, S0, M, P, L, T0, alpha, debug=False):
         """
 
-        :param T0:
-        :param S0: Configuração Inicial (Entrada) -> Ponto?;
-        :param M: Número máximo de iterações (Entrada);
-        :param P: Número máximo de Perturbações por iteração (Entrada);
-        :param L: Número máximo de sucessos por iteração (Entrada);
-        :param alpha: Factor de redução da temperatura (Entrada);
-        :return: Retorna um ponto sendo o mais indicado
+        :param T0: Temperatura inicial.
+        :param S0: Configuração Inicial (Entrada) -> Ponto?.
+        :param M: Número máximo de iterações (Entrada).
+        :param P: Número máximo de Perturbações por iteração (Entrada).
+        :param L: Número máximo de sucessos por iteração (Entrada).
+        :param alpha: Factor de redução da temperatura (Entrada).
+        :return: Retorna um ponto sendo o mais indicado.
         """
         S = S0
         T = T0
