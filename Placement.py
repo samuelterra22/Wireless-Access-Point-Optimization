@@ -95,6 +95,14 @@ class Placement(object):
         root = tk.Tk()
         return root.winfo_screenwidth(), root.winfo_screenheight()
 
+    def mw_to_dbm(self, mW):
+        """Método que converte a potência recebida dada em mW para dBm"""
+        return 10. * log10(mW)
+
+    def dbm_to_mw(self, dBm):
+        """Método que converte a potência recebida dada em dBm para mW."""
+        return 10 ** ((dBm) / 10.)
+
     def hex_to_rgb(self, hex):
         """
         Método responsável por converter uma cor no formato hexadecial para um RGB.
