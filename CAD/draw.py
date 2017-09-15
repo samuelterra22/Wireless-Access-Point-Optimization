@@ -396,6 +396,9 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            print(pygame.mouse.get_pos())
     pygame.display.update()
     #sleep ou yield
     time.sleep(5)
