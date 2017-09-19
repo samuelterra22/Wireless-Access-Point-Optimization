@@ -7,6 +7,7 @@ from random import random
 import matplotlib.pyplot as plt
 import numpy as np
 import pygame
+import ezdxf
 
 
 class Placement(object):
@@ -86,6 +87,129 @@ class Placement(object):
 
         # print("W" + str(self.WIDTH))
         # print("H" + str(self.HEIGHT))
+
+    def read_walls_from_dxf(self, dxf_path):
+        """
+        Método responsável por ler um arquivo DXF e filtrar pela camada ARQ as paredes do ambiente.
+        :param dxf_path: Caminho do arquivo de entrada, sendo ele no formato DFX.
+        :return: Retorna uma lista contendo em cada posição, uma lista de quatro elementos, sendo os dois primeiros
+        referêntes ao ponto inicial da parede e os dois ultimo referênte ao ponto final da parede.
+        """
+        dwg = ezdxf.readfile(dxf_path)
+
+        walls = []
+
+        modelspace = dwg.modelspace()
+
+        escala = 25
+
+        xMin = -1
+        yMin = -1
+        for e in modelspace:
+            if e.dxftype() == 'LINE' and e.dxf.layer == 'ARQ':
+                if e.dxf.start[0] < xMin or xMin == -1:
+                    xMin = e.dxf.start[0]
+                if e.dxf.start[1] < yMin or yMin == -1:
+                    yMin = e.dxf.start[1]
+
+        for e in modelspace:
+            if e.dxftype() == 'LINE' and e.dxf.layer == 'ARQ':
+                line = [
+                    int((e.dxf.start[0] - xMin) * escala),
+                    int((e.dxf.start[1] - yMin) * escala),
+                    int((e.dxf.end[0] - xMin) * escala),
+                    int((e.dxf.end[1] - yMin) * escala)
+                ]
+                walls.append(line)
+
+        return walls
+
+    def side(self, a, b, c):
+        """
+        Returns a position of the point c relative to the line going through a and b
+            Points a, b are expected to be different.
+        :param a: Ponto A.
+        :param b: Ponto B.
+        :param c: Ponto C.
+        :return:
+        """
+        d = (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0])
+        return 1 if d > 0 else (-1 if d < 0 else 0)
+
+    def is_point_in_closed_segment(self, a, b, c):
+        """
+        Returns True if c is inside closed segment, False otherwise.
+            a, b, c are expected to be collinear
+        :param a: Ponto A.
+        :param b: Ponto B.
+        :param c: Ponto C.
+        :return: Retorna valor booleano True se for um ponto fechado por segmento de reta. Caso contrario retorna False.
+        """
+        if a[0] < b[0]:
+            return a[0] <= c[0] <= b[0]
+        if b[0] < a[0]:
+            return b[0] <= c[0] <= a[0]
+
+        if a[1] < b[1]:
+            return a[1] <= c[1] <= b[1]
+        if b[1] < a[1]:
+            return b[1] <= c[1] <= a[1]
+
+        return a[0] == c[0] and a[1] == c[1]
+
+    #
+    def closed_segment_intersect(self, a, b, c, d):
+        """ Verifies if closed segments a, b, c, d do intersect.
+        """
+        if a == b:
+            return a == c or a == d
+        if c == d:
+            return c == a or c == b
+
+        s1 = self.side(a, b, c)
+        s2 = self.side(a, b, d)
+
+        # All points are collinear
+        if s1 == 0 and s2 == 0:
+            return \
+                self.is_point_in_closed_segment(a, b, c) or self.is_point_in_closed_segment(a, b, d) or \
+                self.is_point_in_closed_segment(c, d, a) or self.is_point_in_closed_segment(c, d, b)
+
+        # No touching and on the same side
+        if s1 and s1 == s2:
+            return False
+
+        s1 = self.side(c, d, a)
+        s2 = self.side(c, d, b)
+
+        # No touching and on the same side
+        if s1 and s1 == s2:
+            return False
+
+        return True
+
+    def absorption_in_walls(self, access_point, destiny, walls):
+        # Seus pontos (origem, destino)
+        # AccessPoint = [0,0]
+        # Destino = [899, 579]
+
+        intersections = 0
+
+        for line in walls:
+            # Coordenadas da parede
+            wall_xy_a = line[0:2]
+            wall_xy_b = line[2:4]
+
+            if self.closed_segment_intersect(access_point, destiny, wall_xy_a, wall_xy_b):
+                intersections += 1
+
+        dBm_absorvido_por_parede = 5
+        miliWatts_absorvido_por_parede = pow(10, (dBm_absorvido_por_parede / 10))
+
+        intersecoes_com_paredes = intersections / 2
+        # print("intersecoes_com_paredes = " + str(intersecoes_com_paredes))
+        print(intersections/2)
+        return intersecoes_com_paredes * miliWatts_absorvido_por_parede
 
     def get_monitor_size(self):
         """
@@ -207,7 +331,7 @@ class Placement(object):
     def propagation_model(self, x, y, access_point):
 
         d = self.calc_distance(x, y, access_point[0], access_point[1])
-        if d == 0: ## WTF?
+        if d == 0:  ## WTF?
             d = 1
         gamma = 5
 
@@ -422,14 +546,14 @@ class Placement(object):
         else:
             return [x, y]
 
-    def temperatura_inicial(self):
+    def starting_temperature(self):
         """
         Função que calcula a temperatura inicial;
         :return:
         """
         return 100
 
-    def pertuba(self, S):
+    def perturb(self, S):
         """
          Função que realiza uma perturbação na Solução S.
          Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
@@ -454,7 +578,7 @@ class Placement(object):
 
         return goal
 
-    def randomiza(self, ):
+    def randomize(self, ):
         """
         Função que gera um número aleatório no intervalo [0,1];
         :return:
@@ -499,7 +623,7 @@ class Placement(object):
             while True:
 
                 # Tera que mandar o ponto atual e a matriz (certeza?) tbm. Realiza a seleção do ponto.
-                Si = self.pertuba(S)
+                Si = self.perturb(S)
 
                 # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
                 deltaFi = self.f(Si) - self.f(S)
@@ -509,7 +633,7 @@ class Placement(object):
                 ## Minimização: deltaFi >= 0
                 ## Maximização: deltaFi <= 0
                 # Teste de aceitação de uma nova solução
-                if (deltaFi <= 0) or (exp(-deltaFi / T) > self.randomiza()):
+                if (deltaFi <= 0) or (exp(-deltaFi / T) > self.randomize()):
                     # print("Ponto escolhido: " + str(Si))
                     ## LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
                     S = Si
@@ -536,44 +660,55 @@ class Placement(object):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    p = Placement()
-    # access_point = [0, 0]
-    # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
-    # print(p.objective_function(matrix=m))
 
-    access_point = [0, 0]
-    ## sugestão: sortear o X,Y do ponto inicial (dentro da matriz)
+    if True:
+        p = Placement()
 
-    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
-    max_inter = 600
+        w = p.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
 
-    ## p
-    max_pertub = 5
+        a = p.absorption_in_walls([0, 0], [237, 241], w)
 
-    ## v
-    num_max_succ = 80
+        print(a)
 
-    ## a
-    alpha = .85
+    if False:
+        p = Placement()
+        # access_point = [0, 0]
+        # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
+        # print(p.objective_function(matrix=m))
 
-    ## t
-    temp_inicial = 300
+        access_point = [0, 0]
+        ## sugestão: sortear o X,Y do ponto inicial (dentro da matriz)
 
-    # Marca o tempo do inicio da simulação
-    inicio = datetime.now()
+        ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
+        max_inter = 600
 
-    point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
-                                  alpha=alpha, debug=False)
+        ## p
+        max_pertub = 5
 
-    # Marca o tempo do fim da simulação
-    fim = datetime.now()
+        ## v
+        num_max_succ = 80
 
-    time_seconds = (fim - inicio).seconds
-    time_minutes = time_seconds / 60
+        ## a
+        alpha = .85
 
-    print("\nInicio: \t" + str(inicio.time()))
-    print("Fim: \t\t" + str(fim.time()))
-    print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
+        ## t
+        temp_inicial = 300
 
-    print("Melhor ponto sugerido pelo algoritmo: " + str(point))
-    input('\nPrecione qualquer tecla para encerrar a aplicação.')
+        # Marca o tempo do inicio da simulação
+        inicio = datetime.now()
+
+        point = p.simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
+                                      alpha=alpha, debug=False)
+
+        # Marca o tempo do fim da simulação
+        fim = datetime.now()
+
+        time_seconds = (fim - inicio).seconds
+        time_minutes = time_seconds / 60
+
+        print("\nInicio: \t" + str(inicio.time()))
+        print("Fim: \t\t" + str(fim.time()))
+        print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
+
+        print("Melhor ponto sugerido pelo algoritmo: " + str(point))
+        input('\nPrecione qualquer tecla para encerrar a aplicação.')
