@@ -1,3 +1,5 @@
+import numpy as np
+
 retas_paredes = [
     [944, 466, 944, 469],
     [1011, 469, 1011, 669],
@@ -408,6 +410,20 @@ def closed_segment_intersect(a, b, c, d):
 
     return True
 
+#
+# def ccw(A, B, C):
+#     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+
+def intersect(A, B, C, D):
+    if ((D[1] - A[1]) * (C[0] - A[0]) > (C[1] - A[1]) * (D[0] - A[0])) \
+            != ((D[1] - B[1]) * (C[0] - B[0]) > (C[1] - B[1]) * (D[0] - B[0])) \
+            and ((C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])) \
+                    != ((D[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (D[0] - A[0])):
+        return 1
+    return 0
+        # return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
 def absorcao_paredes(AccessPoint, Destino):
     # Seus pontos (origem, destino)
     # AccessPoint = [0,0]
@@ -415,18 +431,35 @@ def absorcao_paredes(AccessPoint, Destino):
 
     intersecoes = 0
 
-    for reta_parede in retas_paredes:
-        # Coordenadas da parede
-        ParedePxyA = reta_parede[0:2]
-        ParedePxyB = reta_parede[2:4]
+    a = filter(lambda x: intersect(AccessPoint, Destino, x[0:2], x[2:4]), retas_paredes)
 
-        if(closed_segment_intersect(AccessPoint, Destino, ParedePxyA, ParedePxyB)):
-            intersecoes = intersecoes + 1
+    b = filter(lambda x: x != 0, a)
 
+    intersecoes = len(list(b))
+
+    # for reta_parede in retas_paredes:
+    #     # Coordenadas da parede
+    #     ParedePxyA = reta_parede[0:2]
+    #     ParedePxyB = reta_parede[2:4]
+
+        # if(closed_segment_intersect(AccessPoint, Destino, ParedePxyA, ParedePxyB)):
+        #     intersecoes = intersecoes + 1
+
+        # if intersect(AccessPoint, Destino, ParedePxyA, ParedePxyB):
+        #     intersecoes = intersecoes + 1
+
+            # if(intersectLines(AccessPoint, Destino, ParedePxyA, ParedePxyB)):
+            #     intersecoes = intersecoes + 1
+
+            # if(intersection(    AccessPoint, Destino, ParedePxyA, ParedePxyB)):
+            #     intersecoes = intersecoes + 1
 
     dBm_absorvido_por_parede = 5
-    miliWatts_absorvido_por_parede = pow(10, (dBm_absorvido_por_parede/10))
+    miliWatts_absorvido_por_parede = pow(10, (dBm_absorvido_por_parede / 10))
 
     intersecoes_com_paredes = intersecoes / 2
-    # print("intersecoes_com_paredes = " + str(intersecoes_com_paredes))
+    print("intersecoes_com_paredes = " + str(intersecoes_com_paredes))
     return intersecoes_com_paredes * miliWatts_absorvido_por_parede
+
+
+absorcao_paredes((0, 0), (899, 579))

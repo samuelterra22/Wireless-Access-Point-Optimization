@@ -1,3 +1,5 @@
-f = open('saida_2k', 'a')
-f.write("Ponto\tIterações\tVizinhos\tT0\tAlfa\tPertubações\tInicio\tFim\tDuração(Seg)\tDuração(Min)\tF.O.\n")
-f.close()
+
+
+
+def ZZw(X, Y, Z):
+    return (Z[1] - X[1]) * (Y[0] - X[0]) > (Y[1] - X[1]) * (Z[0] - X[0])

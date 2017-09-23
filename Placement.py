@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygame
 
+from numba import autojit, prange, cuda
+
 
 class Placement(object):
     """
@@ -23,11 +25,9 @@ class Placement(object):
         # self.WIDTH = self.get_monitor_size()[0] - 100  # Retira 100pxs para folga
         # self.HEIGHT = self.get_monitor_size()[1] - 100  # Retira 100pxs para folga
 
-        w = self.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
-
         self.contador_uso_func_objetivo = 0
 
-        self.floor_plan = w
+        self.floor_plan = self.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
 
         self.heat_map = None
 
@@ -140,6 +140,7 @@ class Placement(object):
 
         return walls
 
+    #@cuda.jit
     def side(self, a, b, c):
         """
         Returns a position of the point c relative to the line going through a and b
@@ -152,6 +153,7 @@ class Placement(object):
         d = (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0])
         return 1 if d > 0 else (-1 if d < 0 else 0)
 
+    #@cuda.jit
     def is_point_in_closed_segment(self, a, b, c):
         """
         Returns True if c is inside closed segment, False otherwise.
@@ -173,7 +175,7 @@ class Placement(object):
 
         return a[0] == c[0] and a[1] == c[1]
 
-    #
+    #@cuda.jit
     def closed_segment_intersect(self, a, b, c, d):
         """ Verifies if closed segments a, b, c, d do intersect.
         """
@@ -206,28 +208,57 @@ class Placement(object):
 
         return True
 
+    # def ccw(self, A, B, C):
+    #     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+    #@cuda.jit
+    def intersect(self, A, B, C, D):
+
+        # return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+        if ((D[1] - A[1]) * (C[0] - A[0]) > (C[1] - A[1]) * (D[0] - A[0])) \
+                != ((D[1] - B[1]) * (C[0] - B[0]) > (C[1] - B[1]) * (D[0] - B[0])) \
+                and ((C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])) \
+                        != ((D[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (D[0] - A[0])):
+            return 1
+
     ## TODO: otimizar este procedimento pois está fazendo a simulação ficar 163x mais lento
-    def absorption_in_walls(self, access_point, destiny, walls, debug=False):
+    #@cuda.jit
+    def absorption_in_walls(self, access_point, destiny, walls):
         # Seus pontos (origem, destino)
         # AccessPoint = [0,0]
         # Destino = [899, 579]
 
         intersections = 0
 
-        tSum=0
-        for line in walls:
-            # Coordenadas da parede
-            wall_xy_a = line[0:2]
-            wall_xy_b = line[2:4]
+        # tSum=0
+        # for line in walls:
+        #     # Coordenadas da parede
+        #     wall_xy_a = line[0:2]
+        #     wall_xy_b = line[2:4]
+        #
+        #     ##TODO 2.5 microseg ==> Reduzir o tempo do closed_segment_intersect por sera realizado 1,5 bilhão de vezes!!!!!
+        #     t0 = datetime.now()
+        #     if self.closed_segment_intersect(access_point, destiny, wall_xy_a, wall_xy_b):
+        #         intersections += 1
+        #
+        #     tSum+=(datetime.now() - t0).microseconds
+        #
+        # print( round(tSum / len(walls),2) )
 
-            ##TODO 2.5 microseg ==> Reduzir o tempo do closed_segment_intersect por sera realizado 1,5 bilhão de vezes!!!!!
-            t0 = datetime.now()
-            if self.closed_segment_intersect(access_point, destiny, wall_xy_a, wall_xy_b):
-                intersections += 1
+        intersections = (sum(1 for _ in (map(lambda x: self.intersect(access_point, destiny, x[0:2], x[2:4]), walls))))
 
-            tSum+=(datetime.now() - t0).microseconds
+        #b = filter(lambda x: x != 0, a)
 
-        print( round(tSum / len(walls),2) )
+        #intersections = len(list(b))
+
+        #print("Res: " + str(intersections))
+
+        # print("paredes: " + str(sum(list(a))))
+
+        # for line in walls:
+        #     if self.intersect(access_point, destiny, line[0:2], line[2:4]):
+        #         intersections += 1
 
         intersecoes_com_paredes = intersections / 2
         # print("intersecoes_com_paredes = " + str(intersecoes_com_paredes))
@@ -236,15 +267,12 @@ class Placement(object):
         # miliWatts_absorvido_por_parede = pow(10, (dBm_absorvido_por_parede / 10))
         miliWatts_absorvido_por_parede = 1
 
-
         # if debug:
         #     print("Access Point " + str(access_point))
         #     print("Destiny " + str(destiny))
         #     # print("Perda por parede: (dBm) " + str(dBm_absorvido_por_parede))
         #     print("Perda por parede: (mW) " + str(miliWatts_absorvido_por_parede))
         #     print("Nº de intercessões: " + str(intersecoes_com_paredes))
-
-
 
         return intersecoes_com_paredes * miliWatts_absorvido_por_parede
 
@@ -373,6 +401,7 @@ class Placement(object):
     def tree_par_log(self, x):
         return -17.74321 - 15.11596 * math.log(x + 2.1642)
 
+    #@cuda.jit
     def propagation_model(self, x, y, access_point):
 
         d = self.calc_distance(x, y, access_point[0], access_point[1])
@@ -381,7 +410,12 @@ class Placement(object):
         loss_in_wall = 0
 
         ## TODO 500 microsec absoprtion_in_walls
-        #loss_in_wall = self.absorption_in_walls(access_point=access_point, destiny=[x, y], walls=self.floor_plan, debug=False)
+
+
+
+        loss_in_wall = self.absorption_in_walls(access_point=access_point, destiny=[x, y], walls=self.floor_plan)
+
+        #print(str((datetime.now() - inicio).microseconds) + " segundos ==> absorption_in_walls")
 
         # print("loss_in_wall = " + str(loss_in_wall))
 
@@ -391,9 +425,9 @@ class Placement(object):
 
         ## 10 microsec por tree_par_log
 
-        #value = self.log_distance(1, d, gamma)
+        # value = self.log_distance(1, d, gamma)
         value = self.tree_par_log(d) - loss_in_wall
-        #value = self.tree_par_log(d)
+        # value = self.tree_par_log(d)
 
         return value
 
@@ -484,11 +518,12 @@ class Placement(object):
         :param matrix: Matriz a ser avaliada.
         :return: Retorna a soma de todos os elementos da metriz.
         """
-        g = 0
-        for line in matrix:
-            for value in line:
-                g += value
-        return abs(g)
+        # g = 0
+        # for line in matrix:
+        #     for value in line:
+        #         g += value
+
+        return abs(np.sum(matrix))
 
     def simulate(self, save_matrix=False, show_pygame=False, debug=False, access_point=None):
         """
@@ -498,11 +533,11 @@ class Placement(object):
         :param access_point: Access Point com a sua posição.
         :return: Retorna a matriz NxM contendo o resultado da simulação de acordo com o modelo de propagação.
         """
-        if debug:
-            print("Iniciando simulação.")
+        # if debug:
+        #     print("Iniciando simulação.")
 
         # Marca o inicio da simulação
-        #inicio = datetime.now()
+        # inicio = datetime.now()
 
 
         # if False:
@@ -514,7 +549,7 @@ class Placement(object):
         #     pygame.display.set_caption('Simulando...')
 
         # Cria uma matriz para guardar os resultados calculados
-        matrix_results = np.zeros(shape=(self.WIDTH, self.HEIGHT))
+        # matrix_results = np.zeros(shape=(self.WIDTH, self.HEIGHT))
         # matrix_results = np.zeros(shape=(int(self.largura_planta / self.precisao), int(self.comprimento_planta / self.precisao)))
 
         # print("Posição do access point: " + str(access_point))
@@ -522,52 +557,54 @@ class Placement(object):
 
 
         # Preenche a matriz de resultados usando um modelo de propagação
-        #t0 = datetime.now()
+        # t0 = datetime.now()
 
         ## TODO: fix List Comprehension
-        # matrix_results = [ [self.propagation_model(x, y, access_point) for x in range(self.WIDTH)] for y in range(self.HEIGHT) ]
+        matrix_results = [[self.propagation_model(x, y, access_point) for x in range(self.WIDTH)] for y in
+                          range(self.HEIGHT)]
+        matrix_results = np.array(matrix_results)
 
         ## FOR
-        for x in range(self.WIDTH):
-            #inicio = datetime.now()
-            for y in range(self.HEIGHT):
-                value = self.propagation_model(x, y, access_point)
-                matrix_results[x][y] = value
-            #print(str((datetime.now() - inicio).microseconds/1000.0 ) + " milisegundos ==> por LINHA")
+        # for x in range(self.WIDTH):
+        #     #inicio = datetime.now()
+        #     for y in range(self.HEIGHT):
+        #         value = self.propagation_model(x, y, access_point)
+        #         matrix_results[x][y] = value
+        # print(str((datetime.now() - inicio).microseconds/1000.0 ) + " milisegundos ==> por LINHA")
 
-        #t1 = datetime.now()
-        #print(str((t1 - t0).seconds) + " segundos ==> por MATRIZ")
+        # t1 = datetime.now()
+        # print(str((t1 - t0).seconds) + " segundos ==> por MATRIZ")
 
 
         # Guarda os valores máximo e mínimo da matriz
         matrix_max_value = matrix_results.max()
         matrix_min_value = matrix_results.min()
 
-        if show_pygame:
-            # Desenha a matriz usando o PyGame
-            self.print_pygame(matrix_results, access_point)
+        # if show_pygame:
+        # Desenha a matriz usando o PyGame
+        # self.print_pygame(matrix_results, access_point)
 
-        if save_matrix:
-            # Grava os valores da matriz no arquivo
-            self.print_matriz(matrix_results)
+        # if save_matrix:
+        #     # Grava os valores da matriz no arquivo
+        #     self.print_matriz(matrix_results)
+        #
+        # if show_pygame:
+        #     # Atualiza o titulo da janela do PyGame
+        #     pygame.display.set_caption('Simulação terminada')
+        #
+        # if debug:
+        #     # Marca o fim da simulação
+        #     fim = datetime.now()
+        #     # Exibe um resumo da simulação
+        #     print('Simulação terminada.')
+        #     print("\nInicio: \t" + str(inicio.time()))
+        #     print("Fim: \t\t" + str(fim.time()))
+        #     print("Duração: \t" + str((fim - inicio).seconds) + " segundos.\n")
+        #
+        #     print("Maior valor da matriz: " + str(matrix_max_value))
+        #     print("Menor valor da matriz: " + str(matrix_min_value))
 
-        if show_pygame:
-            # Atualiza o titulo da janela do PyGame
-            pygame.display.set_caption('Simulação terminada')
-
-        if debug:
-            # Marca o fim da simulação
-            fim = datetime.now()
-            # Exibe um resumo da simulação
-            print('Simulação terminada.')
-            print("\nInicio: \t" + str(inicio.time()))
-            print("Fim: \t\t" + str(fim.time()))
-            print("Duração: \t" + str((fim - inicio).seconds) + " segundos.\n")
-
-            print("Maior valor da matriz: " + str(matrix_max_value))
-            print("Menor valor da matriz: " + str(matrix_min_value))
-
-            # input('\nPrecione qualquer tecla para encerrar a aplicação.')
+        # input('\nPrecione qualquer tecla para encerrar a aplicação.')
 
         return matrix_results
 
@@ -596,16 +633,16 @@ class Placement(object):
             x = [abs(k) for k in x]
             y = [abs(k) for k in y]
 
-        if debug:
-            plt.plot(x, y, "ro", ms=1)
-            plt.axis([-15, 15, -15, 15])
-
-            for i in range(num):
-                print("Distância entre o ponto ({}, {}) "
-                      "e o ponto ({}, {}) com raio [{}] = {}".format(point[0], point[1], x[i], y[i], ray,
-                                                                     self.calc_distance(point[0], point[1], x[i],
-                                                                                        y[i])))
-            plt.show()
+        # if debug:
+        #     plt.plot(x, y, "ro", ms=1)
+        #     plt.axis([-15, 15, -15, 15])
+        #
+        #     for i in range(num):
+        #         print("Distância entre o ponto ({}, {}) "
+        #               "e o ponto ({}, {}) com raio [{}] = {}".format(point[0], point[1], x[i], y[i], ray,
+        #                                                              self.calc_distance(point[0], point[1], x[i],
+        #                                                                                 y[i])))
+        #     plt.show()
 
         if round_values:
             x = [round(k) for k in x]
@@ -641,16 +678,16 @@ class Placement(object):
         :return: Retorna um numero float representando o valor da situação atual.
         """
 
-        #inicio = datetime.now()
+        inicio = datetime.now()
 
         matrix_result = self.simulate(save_matrix=False, show_pygame=False, debug=False, access_point=x)
 
         goal = self.objective_function(matrix_result)
 
         # print("Função objetivo: " + str(goal))
-        #print(str((datetime.now() - inicio).seconds ) + " segundos ==> por FUNCAO_OBJETIVO")
+        print(str((datetime.now() - inicio).seconds ) + " segundos ==> por f(x)")
 
-        self.contador_uso_func_objetivo+=1
+        # self.contador_uso_func_objetivo += 1
 
         return goal
 
@@ -669,7 +706,6 @@ class Placement(object):
     def showSolution(self, S):
         self.print_pygame(self.simulate(save_matrix=False, show_pygame=False, debug=False, access_point=S), S)
         self.draw_floor_plan(self.floor_plan)
-
 
     def simulated_annealing(self, S0, M, P, L, T0, alpha, debug=False):
         """
@@ -709,18 +745,18 @@ class Placement(object):
                 Si = self.perturb(S)
                 fSi = self.f(Si)
 
-                #self.showSolution(Si)
-                print("[\t" + (str( round((100 - 100*fSi/fS)*100,1) )) + "\t] S: " + str(S) + "\t Si: " + str(Si))
+                # self.showSolution(Si)
+                print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
 
                 # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
                 deltaFi = fSi - fS
 
-                #print("deltaFi: " + str(deltaFi))
+                # print("deltaFi: " + str(deltaFi))
 
                 ## Minimização: deltaFi >= 0
                 ## Maximização: deltaFi <= 0
                 # Teste de aceitação de uma nova solução
-                if (deltaFi <= 0) or (exp(-deltaFi / T) > self.randomize()):
+                if (deltaFi <= 0) or (exp(-deltaFi / T) > random()):  # self.randomize()):
                     # print("Ponto escolhido: " + str(Si))
                     ## LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
                     S = Si
@@ -749,7 +785,7 @@ class Placement(object):
 
         ## saiu do loop principal
         # self.showSolution(S)
-        print("invocacoes de self.f(): " + str(self.contador_uso_func_objetivo))
+        # print("invocacoes de self.f(): " + str(self.contador_uso_func_objetivo))
         return S
 
 
