@@ -1,9 +1,10 @@
 import ezdxf
 
-#dwg = ezdxf.readfile("/home/samuel/Desktop/IFMG/9 Periodo/TCC/bloco-A.dxf")
-dwg = ezdxf.readfile("../DXFs/bloco-A-l.dxf")
-#dwg = ezdxf.readfile("/home/samuel/Desktop/IFMG/9 Periodo/TCC/bloco-A-c.dxf")
-#dwg = ezdxf.readfile("/home/samuel/Desktop/IFMG/9 Periodo/TCC/retangulo1.dxf")
+# dwg = ezdxf.readfile("../DXFs/bloco-A.dxf")
+# dwg = ezdxf.readfile("../DXFs/bloco-A-l.dxf")
+# dwg = ezdxf.readfile("../DXFs/bloco-A-c.dxf")
+# dwg = ezdxf.readfile("../DXFs/retangulo1.dxf")
+dwg = ezdxf.readfile("../DXFs/bloco-a-linhas-porta.dxf")
 
 modelspace = dwg.modelspace()
 

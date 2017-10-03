@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygame
 
-from numba import autojit, prange, cuda
-
+from numba import autojit, prange, cuda, jit
+import numba
 
 class Placement(object):
     """
@@ -28,6 +28,9 @@ class Placement(object):
         self.contador_uso_func_objetivo = 0
 
         self.floor_plan = self.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
+
+        ## print(numba.typeof(self.floor_plan))
+
 
         self.heat_map = None
 
@@ -140,7 +143,7 @@ class Placement(object):
 
         return walls
 
-    #@cuda.jit
+    # @cuda.jit
     def side(self, a, b, c):
         """
         Returns a position of the point c relative to the line going through a and b
@@ -153,7 +156,7 @@ class Placement(object):
         d = (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0])
         return 1 if d > 0 else (-1 if d < 0 else 0)
 
-    #@cuda.jit
+    # @cuda.jit
     def is_point_in_closed_segment(self, a, b, c):
         """
         Returns True if c is inside closed segment, False otherwise.
@@ -175,7 +178,7 @@ class Placement(object):
 
         return a[0] == c[0] and a[1] == c[1]
 
-    #@cuda.jit
+    # @cuda.jit
     def closed_segment_intersect(self, a, b, c, d):
         """ Verifies if closed segments a, b, c, d do intersect.
         """
@@ -208,22 +211,10 @@ class Placement(object):
 
         return True
 
-    # def ccw(self, A, B, C):
-    #     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
-
-    #@cuda.jit
-    def intersect(self, A, B, C, D):
-
-        # return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
-        if ((D[1] - A[1]) * (C[0] - A[0]) > (C[1] - A[1]) * (D[0] - A[0])) \
-                != ((D[1] - B[1]) * (C[0] - B[0]) > (C[1] - B[1]) * (D[0] - B[0])) \
-                and ((C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])) \
-                        != ((D[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (D[0] - A[0])):
-            return 1
 
     ## TODO: otimizar este procedimento pois está fazendo a simulação ficar 163x mais lento
-    #@cuda.jit
+    ## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
+    ## @numba.jit(target='cpu', forceobj=True)
     def absorption_in_walls(self, access_point, destiny, walls):
         # Seus pontos (origem, destino)
         # AccessPoint = [0,0]
@@ -246,13 +237,13 @@ class Placement(object):
         #
         # print( round(tSum / len(walls),2) )
 
-        intersections = (sum(1 for _ in (map(lambda x: self.intersect(access_point, destiny, x[0:2], x[2:4]), walls))))
+        intersections = (sum(1 for _ in (map(lambda x: intersect(access_point, destiny, x[0:2], x[2:4]), walls))))
 
-        #b = filter(lambda x: x != 0, a)
+        # b = filter(lambda x: x != 0, a)
 
-        #intersections = len(list(b))
+        # intersections = len(list(b))
 
-        #print("Res: " + str(intersections))
+        # print("Res: " + str(intersections))
 
         # print("paredes: " + str(sum(list(a))))
 
@@ -401,7 +392,7 @@ class Placement(object):
     def tree_par_log(self, x):
         return -17.74321 - 15.11596 * math.log(x + 2.1642)
 
-    #@cuda.jit
+    # @cuda.jit
     def propagation_model(self, x, y, access_point):
 
         d = self.calc_distance(x, y, access_point[0], access_point[1])
@@ -415,7 +406,7 @@ class Placement(object):
 
         loss_in_wall = self.absorption_in_walls(access_point=access_point, destiny=[x, y], walls=self.floor_plan)
 
-        #print(str((datetime.now() - inicio).microseconds) + " segundos ==> absorption_in_walls")
+        # print(str((datetime.now() - inicio).microseconds) + " segundos ==> absorption_in_walls")
 
         # print("loss_in_wall = " + str(loss_in_wall))
 
@@ -608,6 +599,7 @@ class Placement(object):
 
         return matrix_results
 
+    # @numba.jit()
     def get_point_in_circle(self, point, ray, round_values=True, num=1, absolute_values=True, debug=False):
         """
         Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
@@ -685,7 +677,7 @@ class Placement(object):
         goal = self.objective_function(matrix_result)
 
         # print("Função objetivo: " + str(goal))
-        print(str((datetime.now() - inicio).seconds ) + " segundos ==> por f(x)")
+        print(str((datetime.now() - inicio).seconds) + " segundos ==> por f(x)")
 
         # self.contador_uso_func_objetivo += 1
 
@@ -789,6 +781,23 @@ class Placement(object):
         return S
 
 
+# def ccw(self, A, B, C):
+#     return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+# @cuda.jit
+
+# @numba.jit("uint8(uint16[:,:], uint16[:,:], uint16[:,:], uint16[:,:])", target='cpu')
+def intersect(A, B, C, D):
+
+    # return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+    if ((D[1] - A[1]) * (C[0] - A[0]) > (C[1] - A[1]) * (D[0] - A[0])) \
+            != ((D[1] - B[1]) * (C[0] - B[0]) > (C[1] - B[1]) * (D[0] - B[0])) \
+            and ((C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])) \
+                    != ((D[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (D[0] - A[0])):
+        return 1
+
+
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
@@ -797,7 +806,8 @@ if __name__ == '__main__':
     if False:
         p = Placement()
 
-        w = p.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
+        # w = p.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
+        w = p.read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf")
 
         a = p.absorption_in_walls([0, 0], [237, 241], w)
 
