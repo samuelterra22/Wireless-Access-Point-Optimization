@@ -4,7 +4,8 @@ from timeit import default_timer as timer
 from numba import autojit, prange, jit, cuda
 import numba
 
-@cuda.autojit()
+#@cuda.autojit()
+@jit()
 def mandel(x, y, max_iters):
     """
       Given the real and imaginary parts of a complex number,
@@ -20,7 +21,8 @@ def mandel(x, y, max_iters):
 
     return max_iters
 
-@cuda.autojit()
+#@cuda.autojit()
+@jit()
 def create_fractal(min_x, max_x, min_y, max_y, image, iters):
     height = image.shape[0]
     width = image.shape[1]
@@ -36,11 +38,11 @@ def create_fractal(min_x, max_x, min_y, max_y, image, iters):
             image[y, x] = color
 
 
-image = np.zeros((1024, 1536), dtype=np.uint8)
+image = np.zeros((1024*10, 1536*10), dtype=np.uint8)
 start = timer()
 create_fractal(-2.0, 1.0, -1.0, 1.0, image, 20)
 dt = timer() - start
 
 print("Mandelbrot created in " + str(dt) + " s")
-imshow(image)
-show()
+#imshow(image)
+#show()

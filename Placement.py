@@ -818,7 +818,7 @@ if __name__ == '__main__':
     if True:
         p = Placement()
         # access_point = [0, 0]
-        # m = p.simulate(save_matrix=True, show_pygame=True, access_point=access_point)
+        # m = p.simulate_kernel(save_matrix=True, show_pygame=True, access_point=access_point)
         # print(p.objective_function(matrix=m))
 
         access_point = [0, 0]

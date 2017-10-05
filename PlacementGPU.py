@@ -5,14 +5,11 @@ from math import sqrt, pi, log10, exp
 from random import random
 
 import ezdxf
-import matplotlib.pyplot as plt
 import numpy as np
 import pygame
 
-from numba import autojit, prange, cuda, jit
-import numba
-
-contador_uso_func_objetivo = 0
+from numba import cuda
+from numba import *
 
 
 def read_walls_from_dxf(dxf_path):
@@ -52,97 +49,7 @@ def read_walls_from_dxf(dxf_path):
     return walls
 
 
-debug = False
-
-# WIDTH = get_monitor_size()[0] - 100  # Retira 100pxs para folga
-# HEIGHT = get_monitor_size()[1] - 100  # Retira 100pxs para folga
-
-
-
-floor_plan = np.array(read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf"), np.int32)
-
-## print(numba.typeof(floor_plan))
-
-
-heat_map = None
-
-WIDTH = 350
-HEIGHT = 200
-
-comprimento_planta = 800
-largura_planta = 600
-precisao = 1  # metro
-
-escala = HEIGHT / largura_planta
-
-# tamanho da matriz = dimensão da planta / precisão
-
-proporcao_planta = comprimento_planta / largura_planta
-# WIDTH = int(HEIGHT * proporcao_planta)
-
-if debug:
-    print("Dimensão da planta: " + str(comprimento_planta) + "x" + str(largura_planta))
-    print("Dimensão da matriz de valores: " + str(WIDTH) + "x" + str(HEIGHT))
-    print("Precisão de " + str(precisao) + " metros.")
-    print("Escala de 1:" + str(escala) + ".")
-
-CHANNEL = 9
-
-# Posição menor -> Azul, Posição Maior -> Amarelo/Vermelho
-COLORS = [
-    '#0C0786', '#100787', '#130689', '#15068A', '#18068B', '#1B068C', '#1D068D', '#1F058E',
-    '#21058F', '#230590', '#250591', '#270592', '#290593', '#2B0594', '#2D0494', '#2F0495',
-    '#310496', '#330497', '#340498', '#360498', '#380499', '#3A049A', '#3B039A', '#3D039B',
-    '#3F039C', '#40039C', '#42039D', '#44039E', '#45039E', '#47029F', '#49029F', '#4A02A0',
-    '#4C02A1', '#4E02A1', '#4F02A2', '#5101A2', '#5201A3', '#5401A3', '#5601A3', '#5701A4',
-    '#5901A4', '#5A00A5', '#5C00A5', '#5E00A5', '#5F00A6', '#6100A6', '#6200A6', '#6400A7',
-    '#6500A7', '#6700A7', '#6800A7', '#6A00A7', '#6C00A8', '#6D00A8', '#6F00A8', '#7000A8',
-    '#7200A8', '#7300A8', '#7500A8', '#7601A8', '#7801A8', '#7901A8', '#7B02A8', '#7C02A7',
-    '#7E03A7', '#7F03A7', '#8104A7', '#8204A7', '#8405A6', '#8506A6', '#8607A6', '#8807A5',
-    '#8908A5', '#8B09A4', '#8C0AA4', '#8E0CA4', '#8F0DA3', '#900EA3', '#920FA2', '#9310A1',
-    '#9511A1', '#9612A0', '#9713A0', '#99149F', '#9A159E', '#9B179E', '#9D189D', '#9E199C',
-    '#9F1A9B', '#A01B9B', '#A21C9A', '#A31D99', '#A41E98', '#A51F97', '#A72197', '#A82296',
-    '#A92395', '#AA2494', '#AC2593', '#AD2692', '#AE2791', '#AF2890', '#B02A8F', '#B12B8F',
-    '#B22C8E', '#B42D8D', '#B52E8C', '#B62F8B', '#B7308A', '#B83289', '#B93388', '#BA3487',
-    '#BB3586', '#BC3685', '#BD3784', '#BE3883', '#BF3982', '#C03B81', '#C13C80', '#C23D80',
-    '#C33E7F', '#C43F7E', '#C5407D', '#C6417C', '#C7427B', '#C8447A', '#C94579', '#CA4678',
-    '#CB4777', '#CC4876', '#CD4975', '#CE4A75', '#CF4B74', '#D04D73', '#D14E72', '#D14F71',
-    '#D25070', '#D3516F', '#D4526E', '#D5536D', '#D6556D', '#D7566C', '#D7576B', '#D8586A',
-    '#D95969', '#DA5A68', '#DB5B67', '#DC5D66', '#DC5E66', '#DD5F65', '#DE6064', '#DF6163',
-    '#DF6262', '#E06461', '#E16560', '#E26660', '#E3675F', '#E3685E', '#E46A5D', '#E56B5C',
-    '#E56C5B', '#E66D5A', '#E76E5A', '#E87059', '#E87158', '#E97257', '#EA7356', '#EA7455',
-    '#EB7654', '#EC7754', '#EC7853', '#ED7952', '#ED7B51', '#EE7C50', '#EF7D4F', '#EF7E4E',
-    '#F0804D', '#F0814D', '#F1824C', '#F2844B', '#F2854A', '#F38649', '#F38748', '#F48947',
-    '#F48A47', '#F58B46', '#F58D45', '#F68E44', '#F68F43', '#F69142', '#F79241', '#F79341',
-    '#F89540', '#F8963F', '#F8983E', '#F9993D', '#F99A3C', '#FA9C3B', '#FA9D3A', '#FA9F3A',
-    '#FAA039', '#FBA238', '#FBA337', '#FBA436', '#FCA635', '#FCA735', '#FCA934', '#FCAA33',
-    '#FCAC32', '#FCAD31', '#FDAF31', '#FDB030', '#FDB22F', '#FDB32E', '#FDB52D', '#FDB62D',
-    '#FDB82C', '#FDB92B', '#FDBB2B', '#FDBC2A', '#FDBE29', '#FDC029', '#FDC128', '#FDC328',
-    '#FDC427', '#FDC626', '#FCC726', '#FCC926', '#FCCB25', '#FCCC25', '#FCCE25', '#FBD024',
-    '#FBD124', '#FBD324', '#FAD524', '#FAD624', '#FAD824', '#F9D924', '#F9DB24', '#F8DD24',
-    '#F8DF24', '#F7E024', '#F7E225', '#F6E425', '#F6E525', '#F5E726', '#F5E926', '#F4EA26',
-    '#F3EC26', '#F3EE26', '#F2F026', '#F2F126', '#F1F326', '#F0F525', '#F0F623', '#EFF821'
-]
-
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-
-
-# print("W" + str(WIDTH))
-# print("H" + str(HEIGHT))
-
-# Inicia o PyGame
-# pygame.init()
-
-# Configura o tamanho da janela
-# DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-
-
-
-# @numba.jit()
+@jit
 def side(a, b, c):
     """
     Returns a position of the point c relative to the line going through a and b
@@ -156,7 +63,7 @@ def side(a, b, c):
     return 1 if d > 0 else (-1 if d < 0 else 0)
 
 
-# @numba.jit()
+@jit
 def is_point_in_closed_segment(a, b, c):
     """
     Returns True if c is inside closed segment, False otherwise.
@@ -179,7 +86,7 @@ def is_point_in_closed_segment(a, b, c):
     return a[0] == c[0] and a[1] == c[1]
 
 
-# @numba.jit()
+@jit
 def closed_segment_intersect(a, b, c, d):
     """ Verifies if closed segments a, b, c, d do intersect.
     """
@@ -213,61 +120,20 @@ def closed_segment_intersect(a, b, c, d):
     return True
 
 
-## TODO: otimizar este procedimento pois está fazendo a simulação ficar 163x mais lento
-## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
-## @numba.jit(target='cpu', forceobj=True)
-# @numba.jit()
-# @numba.jit("f8(u4[:,:],u4[:,:],u4[:,:,:,:])", target='cpu')
-# @numba.jit()
 def absorption_in_walls(access_point, destiny, walls):
-    # Seus pontos (origem, destino)
-    # AccessPoint = [0,0]
-    # Destino = [899, 579]
-
     intersections = 0
 
-    # tSum=0
-    # for line in walls:
-    #     # Coordenadas da parede
-    #     wall_xy_a = line[0:2]
-    #     wall_xy_b = line[2:4]
-    #
-    #     ##TODO 2.5 microseg ==> Reduzir o tempo do closed_segment_intersect por sera realizado 1,5 bilhão de vezes!!!!!
-    #     t0 = datetime.now()
-    #     if closed_segment_intersect(access_point, destiny, wall_xy_a, wall_xy_b):
-    #         intersections += 1
-    #
-    #     tSum+=(datetime.now() - t0).microseconds
-    #
-    # print( round(tSum / len(walls),2) )
+    for line in walls:
+        # Coordenadas da parede
+        wall_xy_a = line[0:2]
+        wall_xy_b = line[2:4]
 
-    intersections = (sum(1 for _ in (map(lambda x: intersect(access_point, destiny, x[0:2], x[2:4]), walls))))
-
-    # b = filter(lambda x: x != 0, a)
-
-    # intersections = len(list(b))
-
-    # print("Res: " + str(intersections))
-
-    # print("paredes: " + str(sum(list(a))))
-
-    # for line in walls:
-    #     if intersect(access_point, destiny, line[0:2], line[2:4]):
-    #         intersections += 1
+        if closed_segment_intersect(access_point, destiny, wall_xy_a, wall_xy_b):
+            intersections += 1
 
     intersecoes_com_paredes = intersections / 2
-    # print("intersecoes_com_paredes = " + str(intersecoes_com_paredes))
 
-    # dBm_absorvido_por_parede = 0.01
-    # miliWatts_absorvido_por_parede = pow(10, (dBm_absorvido_por_parede / 10))
     miliWatts_absorvido_por_parede = 1
-
-    # if debug:
-    #     print("Access Point " + str(access_point))
-    #     print("Destiny " + str(destiny))
-    #     # print("Perda por parede: (dBm) " + str(dBm_absorvido_por_parede))
-    #     print("Perda por parede: (mW) " + str(miliWatts_absorvido_por_parede))
-    #     print("Nº de intercessões: " + str(intersecoes_com_paredes))
 
     return intersecoes_com_paredes * miliWatts_absorvido_por_parede
 
@@ -341,8 +207,7 @@ def draw_floor_plan(floor_plan):
     pygame.display.update()
 
 
-# @numba.jit("f4(u4,u4,u4,u4)", target='cpu')
-@numba.jit()
+@jit
 def calc_distance(x1, y1, x2, y2):
     """
     Método responsável por realizar o calculo da distância entre dois pontos no plano cartesiano.
@@ -355,7 +220,6 @@ def calc_distance(x1, y1, x2, y2):
     return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
 
 
-@numba.jit("f4()", target='cpu')
 def frequency():
     """
     Método responsável por calcular a frequência de acordo com o canal.
@@ -364,7 +228,6 @@ def frequency():
     return (2.407 + (5 * CHANNEL) / 1000) * 10 ** 9
 
 
-@numba.jit("f4()", target='cpu')
 def wave_length():
     """
     Método responsável por calcular o comprimento de onda como razão a velocidade da luz da frequência do canal.
@@ -374,7 +237,6 @@ def wave_length():
     return C / frequency()
 
 
-## TODO calcular a frequency() e a wave_length() UMA VEZ, salvando como variaveis globais e usando na formula da propagação
 def path_loss(d):
     """
     Perda no caminho (Path Loss) mensurado em dB.
@@ -412,35 +274,21 @@ def log_distance(d0, d, gamma):
     return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
 
 
-@numba.jit("f4(f4)", target='cpu')
+@jit
 def tree_par_log(x):
     return -17.74321 - 15.11596 * math.log(x + 2.1642)
 
 
-## TODO jit trava run
-# @numba.jit("(u4,u4,u4[:,:])", target='cpu')
+@jit
 def propagation_model(x, y, access_point):
     d = calc_distance(x, y, access_point[0], access_point[1])
 
-    ## 00.1 segundos para cada FuncaoObjetivo com absorption_in_walls
     loss_in_wall = 0
 
-    ## TODO 500 microsec absoprtion_in_walls
-
-
-    # inicio = datetime.now()
-
-    loss_in_wall = absorption_in_walls(access_point, [x, y], walls=floor_plan)
-
-    # print(str((datetime.now() - inicio).microseconds/1000) + " microsegundos ==> absorption_in_walls")
-
-    # print("loss_in_wall = " + str(loss_in_wall))
-
+    #loss_in_wall = absorption_in_walls(access_point=access_point, destiny=[x, y], walls=floor_plan)
     if d == 0:
         d = 1
     gamma = 5
-
-    ## 10 microsec por tree_par_log
 
     # value = log_distance(1, d, gamma)
     value = tree_par_log(d) - loss_in_wall
@@ -505,7 +353,6 @@ def get_percentage_of_range(min, max, x):
     return ((x - min) / (max - min)) * 100
 
 
-# @numba.jit("u1[:](f8,i1[i1[:]])", target='cpu')
 def get_value_in_list(percent, list):
     """
     Método retorna o valor de uma posição de uma lista. A posição é calculada de acordo a porcentagem.
@@ -521,7 +368,6 @@ def get_value_in_list(percent, list):
     return hex_to_rgb(list[int(position - 1)])
 
 
-# @numba.jit("i1[:](f8,f8,f8)", target='cpu')
 def get_color_of_interval(min, max, x):
     """
     Este método retorna uma cor de acordo com o valor que está entre o intervalo min-max. Em outras palavras,
@@ -537,7 +383,6 @@ def get_color_of_interval(min, max, x):
     return color
 
 
-@numba.jit("f8(f8[:,:])", target='cpu')
 def objective_function(matrix):
     """
     Função objetivo para a avaliação da solução atual.
@@ -552,8 +397,11 @@ def objective_function(matrix):
     return abs(np.sum(matrix))
 
 
-# @numba.jit("f8[:,:](b1, b1, b1, u4[:,:])", target='cpu')
-def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=None):
+propagation_model_gpu = cuda.jit(device=True)(propagation_model)
+
+
+@cuda.jit  ## mandel_kernel
+def simulate_kernel(access_point, matrix):
     """
     Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
     :param save_matrix: Flag que sinaliza se quero salvar a matriz de resultados em um arquivo.
@@ -576,69 +424,67 @@ def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=Non
     #     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
     #     pygame.display.set_caption('Simulando...')
 
-    # Cria uma matriz para guardar os resultados calculados
-    # matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
-    # matrix_results = np.zeros(shape=(int(largura_planta / precisao), int(comprimento_planta / precisao)))
+    startX, startY = cuda.grid(2)
+    gridX = cuda.gridDim.x * cuda.blockDim.x
+    gridY = cuda.gridDim.y * cuda.blockDim.y
 
-    # print("Posição do access point: " + str(access_point))
+    # propagation_model_gpu = cuda.jit(device=True)(propagation_model)
 
+    for x in range(startX, WIDTH, gridX):
+        for y in range(startY, HEIGHT, gridY):
+            value = propagation_model_gpu(x, y, access_point)
+            matrix[x][y] = value
 
+            # Guarda os valores máximo e mínimo da matriz ## de fora do metodo
+            # matrix_max_value = matrix_results.max()
+            # matrix_min_value = matrix_results.min()
 
-    # Preenche a matriz de resultados usando um modelo de propagação
-    # t0 = datetime.now()
+            # if show_pygame:
+            # Desenha a matriz usando o PyGame
+            # print_pygame(matrix_results, access_point)
 
-    ## TODO: fix List Comprehension
-    matrix_results = [[propagation_model(x, y, access_point) for x in range(WIDTH)] for y in
-                      range(HEIGHT)]
-    matrix_results = np.array(matrix_results)
+            # if save_matrix:
+            #     # Grava os valores da matriz no arquivo
+            #     print_matriz(matrix_results)
+            #
+            # if show_pygame:
+            #     # Atualiza o titulo da janela do PyGame
+            #     pygame.display.set_caption('Simulação terminada')
+            #
+            # if debug:
+            #     # Marca o fim da simulação
+            #     fim = datetime.now()
+            #     # Exibe um resumo da simulação
+            #     print('Simulação terminada.')
+            #     print("\nInicio: \t" + str(inicio.time()))
+            #     print("Fim: \t\t" + str(fim.time()))
+            #     print("Duração: \t" + str((fim - inicio).seconds) + " segundos.\n")
+            #
+            #     print("Maior valor da matriz: " + str(matrix_max_value))
+            #     print("Menor valor da matriz: " + str(matrix_min_value))
 
-    ## FOR
-    # for x in range(WIDTH):
-    #     #inicio = datetime.now()
-    #     for y in range(HEIGHT):
-    #         value = propagation_model(x, y, access_point)
-    #         matrix_results[x][y] = value
-    # print(str((datetime.now() - inicio).microseconds/1000.0 ) + " milisegundos ==> por LINHA")
+            # input('\nPrecione qualquer tecla para encerrar a aplicação.')
 
-    # t1 = datetime.now()
-    # print(str((t1 - t0).seconds) + " segundos ==> por MATRIZ")
+            ##return matrix_results
 
+@jit
+def simulate(access_point, matrix_results):
+    """
+    Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
+    :param save_matrix: Flag que sinaliza se quero salvar a matriz de resultados em um arquivo.
+    :param show_pygame: Flag que sinaliza se quero exibir o resultado gráfico da simulação usando o PyGame.
+    :param access_point: Access Point com a sua posição.
+    :return: Retorna a matriz NxM contendo o resultado da simulação de acordo com o modelo de propagação.
+    """
 
-    # Guarda os valores máximo e mínimo da matriz
-    # matrix_max_value = matrix_results.max()
-    # matrix_min_value = matrix_results.min()
-
-    # if show_pygame:
-    # Desenha a matriz usando o PyGame
-    # print_pygame(matrix_results, access_point)
-
-    # if save_matrix:
-    #     # Grava os valores da matriz no arquivo
-    #     print_matriz(matrix_results)
-    #
-    # if show_pygame:
-    #     # Atualiza o titulo da janela do PyGame
-    #     pygame.display.set_caption('Simulação terminada')
-    #
-    # if debug:
-    #     # Marca o fim da simulação
-    #     fim = datetime.now()
-    #     # Exibe um resumo da simulação
-    #     print('Simulação terminada.')
-    #     print("\nInicio: \t" + str(inicio.time()))
-    #     print("Fim: \t\t" + str(fim.time()))
-    #     print("Duração: \t" + str((fim - inicio).seconds) + " segundos.\n")
-    #
-    #     print("Maior valor da matriz: " + str(matrix_max_value))
-    #     print("Menor valor da matriz: " + str(matrix_min_value))
-
-    # input('\nPrecione qualquer tecla para encerrar a aplicação.')
+    for x in range(WIDTH):
+        for y in range(HEIGHT):
+            matrix_results[x][y] = propagation_model(x, y, access_point)
 
     return matrix_results
 
-
-# @numba.jit("u4[:,:](u4[:,:],u4,b1,u4,b1)")
-def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=True):
+#@jit
+def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=True, debug=False):
     """
     Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
     :param point: Ponto contendo posição [x, y] de referência do ponto.
@@ -679,13 +525,12 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
         y = [round(k) for k in y]
 
     # Verifica se o retorno será um ponto único ou uma lista de pontos.
-    # if num == 1:
-    return [x[0], y[0]]
-    # else:
-    #    return [x, y]
+    if num == 1:
+        return [x[0], y[0]]
+    else:
+        return [x, y]
 
 
-@numba.jit("u4()")
 def starting_temperature():
     """
     Função que calcula a temperatura inicial;
@@ -694,7 +539,7 @@ def starting_temperature():
     return 100
 
 
-@numba.jit("u4[:,:](u4[:,:])")
+# @jit
 def perturb(S):
     """
      Função que realiza uma perturbação na Solução S.
@@ -706,7 +551,36 @@ def perturb(S):
     return get_point_in_circle(point=S, ray=10)
 
 
-@numba.jit("f8(u4[:,:])")
+# @jit
+def f_cuda(x):
+    """
+    Valor da função objetivo correspondente á configuração x;
+    :param x: Ponto para realizar a simulação.
+    :return: Retorna um numero float representando o valor da situação atual.
+    """
+
+    # Cria uma matriz para guardar os resultados calculados
+    ram_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
+    # matrix_results = np.zeros(shape=(int(largura_planta / precisao), int(comprimento_planta / precisao)))
+
+    ## 384 threads
+    block_dim = (48, 8)
+    grid_dim = (int(WIDTH / 8), int(HEIGHT / 48))
+
+    gpu_matrix = cuda.to_device(ram_matrix)
+
+    simulate_kernel[grid_dim, block_dim](x, gpu_matrix)
+    gpu_matrix.to_host()
+
+    goal = objective_function(ram_matrix)
+
+    # print("Função objetivo: " + str(goal))
+    # print(str((datetime.now() - inicio).seconds) + " segundos ==> por f(x)")
+
+    # contador_uso_func_objetivo += 1
+
+    return goal
+
 def f(x):
     """
     Valor da função objetivo correspondente á configuração x;
@@ -714,21 +588,15 @@ def f(x):
     :return: Retorna um numero float representando o valor da situação atual.
     """
 
-    inicio = datetime.now()
+    ram_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float64)
 
-    matrix_result = simulate(save_matrix=False, show_pygame=False, debug=False, access_point=x)
+    matrix_result = simulate(x, ram_matrix)
 
     goal = objective_function(matrix_result)
-
-    # print("Função objetivo: " + str(goal))
-    print(str((datetime.now() - inicio).seconds) + " segundos ==> por f(x)")
-
-    # contador_uso_func_objetivo += 1
 
     return goal
 
 
-@numba.jit("f8()")
 def randomize():
     """
     Função que gera um número aleatório no intervalo [0,1];
@@ -742,14 +610,12 @@ def randomize():
     return rand
 
 
-@numba.jit("void(u4[:,:])", target='cpu')
-def showSolution(S):
-    print_pygame(simulate(save_matrix=False, show_pygame=False, debug=False, access_point=S), S)
+def showSolution(S, matrix):
+    print_pygame(simulate_kernel(S, matrix), S)
     draw_floor_plan(floor_plan)
 
 
-# @numba.jit("u8[:,:]( u8[:,:], u8, u8, u8, u8, f8)", target='cpu')
-def simulated_annealing(S0, M, P, L, T0, alpha):
+def simulated_annealing(S0, M, P, L, T0, alpha, debug=False):
     """
 
     :param T0: Temperatura inicial.
@@ -764,15 +630,14 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
     T = T0
     j = 1
 
-    print("\nIniciando Simulated Annealing com a seguinte configuração:")
-    print("Ponto inicial:\t\t\t\t\t\t\t\t" + str(S0))
-    print("Númeto máximo de iterações:\t\t\t\t\t" + str(M))
-    print("Número máximo de pertubações por iteração:\t" + str(P))
-    print("Número máximo de sucessos por iteração:\t\t" + str(L))
-    print("Decaimento da teperatura com α=\t\t\t\t" + str(alpha))
-    # input("Aperte qualquer tecla para continuar.")
-
-    # contador_uso_func_objetivo = 0
+    if debug:
+        print("\nIniciando Simulated Annealing com a seguinte configuração:")
+        print("Ponto inicial:\t\t\t\t\t\t\t\t" + str(S0))
+        print("Númeto máximo de iterações:\t\t\t\t\t" + str(M))
+        print("Número máximo de pertubações por iteração:\t" + str(P))
+        print("Número máximo de sucessos por iteração:\t\t" + str(L))
+        print("Decaimento da teperatura com α=\t\t\t\t" + str(alpha))
+        # input("Aperte qualquer tecla para continuar.")
 
     fS = f(S0)
 
@@ -788,10 +653,8 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
             Si = perturb(S)
             fSi = f(Si)
 
-            # contador_uso_func_objetivo += 1
-
             # showSolution(Si)
-            # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
+            print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
@@ -809,15 +672,15 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
                 nSucesso = nSucesso + 1
 
                 # showSolution(S)
-                # print("melhor S: " + str(S))
+                print("melhor S: " + str(S))
 
             i = i + 1
 
             if (nSucesso >= L) or (i > P):
                 break
 
-        # print("iteração: " + str(j))
-        # print("temperat: " + str(T) + "\n")
+        print("iteração: " + str(j))
+        print("temperat: " + str(T) + "\n")
 
         # Atualização da temperatura (Deicaimento geométrico)
         T = alpha * T
@@ -839,7 +702,7 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
 
 # @cuda.jit
 
-@numba.jit("uint8(uint16[:,:], uint16[:,:], uint16[:,:], uint16[:,:])", target='cpu')
+# @numba.jit("uint8(uint16[:,:], uint16[:,:], uint16[:,:], uint16[:,:])", target='cpu')
 def intersect(A, B, C, D):
     # return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
 
@@ -855,14 +718,88 @@ def intersect(A, B, C, D):
 ########################################################################################################################
 if __name__ == '__main__':
 
-    if False:
-        w = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
+    """
+    Contrutor da classe Placement.
+    """
+    # WIDTH = get_monitor_size()[0] - 100  # Retira 100pxs para folga
+    # HEIGHT = get_monitor_size()[1] - 100  # Retira 100pxs para folga
 
-        a = absorption_in_walls([0, 0], [237, 241], w)
+    contador_uso_func_objetivo = 0
 
-        draw_floor_plan(w)
+    floor_plan = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
 
-        input()
+    ## print(numba.typeof(floor_plan))
+
+
+    heat_map = None
+
+    WIDTH = 384
+    HEIGHT = 288
+
+    comprimento_planta = 800
+    largura_planta = 600
+    precisao = 1  # metro
+
+    escala = HEIGHT / largura_planta
+
+    # tamanho da matriz = dimensão da planta / precisão
+
+    proporcao_planta = comprimento_planta / largura_planta
+    # WIDTH = int(HEIGHT * proporcao_planta)
+
+
+    CHANNEL = 9
+
+    # Posição menor -> Azul, Posição Maior -> Amarelo/Vermelho
+    COLORS = [
+        '#0C0786', '#100787', '#130689', '#15068A', '#18068B', '#1B068C', '#1D068D', '#1F058E',
+        '#21058F', '#230590', '#250591', '#270592', '#290593', '#2B0594', '#2D0494', '#2F0495',
+        '#310496', '#330497', '#340498', '#360498', '#380499', '#3A049A', '#3B039A', '#3D039B',
+        '#3F039C', '#40039C', '#42039D', '#44039E', '#45039E', '#47029F', '#49029F', '#4A02A0',
+        '#4C02A1', '#4E02A1', '#4F02A2', '#5101A2', '#5201A3', '#5401A3', '#5601A3', '#5701A4',
+        '#5901A4', '#5A00A5', '#5C00A5', '#5E00A5', '#5F00A6', '#6100A6', '#6200A6', '#6400A7',
+        '#6500A7', '#6700A7', '#6800A7', '#6A00A7', '#6C00A8', '#6D00A8', '#6F00A8', '#7000A8',
+        '#7200A8', '#7300A8', '#7500A8', '#7601A8', '#7801A8', '#7901A8', '#7B02A8', '#7C02A7',
+        '#7E03A7', '#7F03A7', '#8104A7', '#8204A7', '#8405A6', '#8506A6', '#8607A6', '#8807A5',
+        '#8908A5', '#8B09A4', '#8C0AA4', '#8E0CA4', '#8F0DA3', '#900EA3', '#920FA2', '#9310A1',
+        '#9511A1', '#9612A0', '#9713A0', '#99149F', '#9A159E', '#9B179E', '#9D189D', '#9E199C',
+        '#9F1A9B', '#A01B9B', '#A21C9A', '#A31D99', '#A41E98', '#A51F97', '#A72197', '#A82296',
+        '#A92395', '#AA2494', '#AC2593', '#AD2692', '#AE2791', '#AF2890', '#B02A8F', '#B12B8F',
+        '#B22C8E', '#B42D8D', '#B52E8C', '#B62F8B', '#B7308A', '#B83289', '#B93388', '#BA3487',
+        '#BB3586', '#BC3685', '#BD3784', '#BE3883', '#BF3982', '#C03B81', '#C13C80', '#C23D80',
+        '#C33E7F', '#C43F7E', '#C5407D', '#C6417C', '#C7427B', '#C8447A', '#C94579', '#CA4678',
+        '#CB4777', '#CC4876', '#CD4975', '#CE4A75', '#CF4B74', '#D04D73', '#D14E72', '#D14F71',
+        '#D25070', '#D3516F', '#D4526E', '#D5536D', '#D6556D', '#D7566C', '#D7576B', '#D8586A',
+        '#D95969', '#DA5A68', '#DB5B67', '#DC5D66', '#DC5E66', '#DD5F65', '#DE6064', '#DF6163',
+        '#DF6262', '#E06461', '#E16560', '#E26660', '#E3675F', '#E3685E', '#E46A5D', '#E56B5C',
+        '#E56C5B', '#E66D5A', '#E76E5A', '#E87059', '#E87158', '#E97257', '#EA7356', '#EA7455',
+        '#EB7654', '#EC7754', '#EC7853', '#ED7952', '#ED7B51', '#EE7C50', '#EF7D4F', '#EF7E4E',
+        '#F0804D', '#F0814D', '#F1824C', '#F2844B', '#F2854A', '#F38649', '#F38748', '#F48947',
+        '#F48A47', '#F58B46', '#F58D45', '#F68E44', '#F68F43', '#F69142', '#F79241', '#F79341',
+        '#F89540', '#F8963F', '#F8983E', '#F9993D', '#F99A3C', '#FA9C3B', '#FA9D3A', '#FA9F3A',
+        '#FAA039', '#FBA238', '#FBA337', '#FBA436', '#FCA635', '#FCA735', '#FCA934', '#FCAA33',
+        '#FCAC32', '#FCAD31', '#FDAF31', '#FDB030', '#FDB22F', '#FDB32E', '#FDB52D', '#FDB62D',
+        '#FDB82C', '#FDB92B', '#FDBB2B', '#FDBC2A', '#FDBE29', '#FDC029', '#FDC128', '#FDC328',
+        '#FDC427', '#FDC626', '#FCC726', '#FCC926', '#FCCB25', '#FCCC25', '#FCCE25', '#FBD024',
+        '#FBD124', '#FBD324', '#FAD524', '#FAD624', '#FAD824', '#F9D924', '#F9DB24', '#F8DD24',
+        '#F8DF24', '#F7E024', '#F7E225', '#F6E425', '#F6E525', '#F5E726', '#F5E926', '#F4EA26',
+        '#F3EC26', '#F3EE26', '#F2F026', '#F2F126', '#F1F326', '#F0F525', '#F0F623', '#EFF821'
+    ]
+
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
+
+    # print("W" + str(WIDTH))
+    # print("H" + str(HEIGHT))
+
+    # Inicia o PyGame
+    # pygame.init()
+
+    # Configura o tamanho da janela
+    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     if True:
         # access_point = [0, 0]
@@ -882,7 +819,7 @@ if __name__ == '__main__':
         num_max_succ = 80
 
         ## a
-        alpha = .85
+        alpha = .859
 
         ## t
         temp_inicial = 300
@@ -891,7 +828,7 @@ if __name__ == '__main__':
         inicio = datetime.now()
 
         point = simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
-                                    alpha=alpha)
+                                    alpha=alpha, debug=True)
 
         # Marca o tempo do fim da simulação
         fim = datetime.now()
@@ -904,4 +841,3 @@ if __name__ == '__main__':
         print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
 
         print("Melhor ponto sugerido pelo algoritmo: " + str(point))
-        # input('\nPrecione qualquer tecla para encerrar a aplicação.')

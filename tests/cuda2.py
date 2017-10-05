@@ -1,8 +1,7 @@
 import numpy as np
 import time
 
-from numba import vectorize, cuda
-
+from numbapro import vectorize
 
 @vectorize(["float32(float32, float32)"], target='cuda')
 def VectorAdd(a, b):

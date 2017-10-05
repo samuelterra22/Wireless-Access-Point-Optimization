@@ -22,17 +22,19 @@
 #   http://bokeh.pydata.org/en/latest/docs/reference/palettes.html
 #   https://github.com/bokeh/bokeh/blob/master/bokeh/palettes.py
 #
-#
+#   nVidea:
+#   https://www.anandtech.com/show/6873/nvidias-geforce-700m-family-full-details-and-specs/2
 #
 #
 
 #   Instalações necessárias:
 #
 #   * tkinter       ->  apt-get install python3-tk
-#   * pygame        ->  sudo apt-get install python3-setuptools,    sudo pip3 install pygame
+#   * pygame        ->  sudo apt-get install python3-setuptools, python3 install pygame
 #   * python 3.5    ->  sudo apt-get update,    sudo apt-get install python3
 #   * numpy         ->  sudo pip3 install numpy
 #   * matplotlib    ->  sudo pip3 install matplotlib
+#   * ezdxf         ->  python3 -m pip install ezdxf
 #
 
 # Modelar:
