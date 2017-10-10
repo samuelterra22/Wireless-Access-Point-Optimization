@@ -217,7 +217,7 @@ def calc_distance(x1, y1, x2, y2):
     :param y2: Valor de Y no ponto 2.
     :return: Retorna um valor float representando a distância dos pontos informados.
     """
-    return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
+    return np.sqrt(np.power((x1 - x2), 2.0) + np.power((y1 - y2), 2.0))
 
 
 def frequency():
@@ -243,21 +243,21 @@ def path_loss(d):
     :param d: Distâcia.
     :return: Perda no caminho.
     """
-    return 20 * log10((4 * pi * d) / wave_length())
+    return 20 * np.log10((4 * np.pi * d) / wave_length())
 
 
 def two_ray_ground_reflection_model(Pt, Gt, Gr, Ht, Hr, d, L):
     """
     Pr
     """
-    return (Pt * Gt * Gr * pow(Ht, 2) * pow(Hr, 2)) / (pow(d, 4) * L)
+    return (Pt * Gt * Gr * np.power(Ht, 2) * np.power(Hr, 2)) / (np.power(d, 4) * L)
 
 
 def free_space_model(Pt, Gt, Gr, lamb, d, L):
     """
     Pr
     """
-    return (Pt * Gt * Gr * (pow(lamb, 2))) / (pow((4 * pi), 2) * pow(d, 2) * L)
+    return (Pt * Gt * Gr * (np.power(lamb, 2))) / (np.power((4 * pi), 2) * np.power(d, 2) * L)
 
 
 def log_distance(d0, d, gamma):
@@ -271,12 +271,12 @@ def log_distance(d0, d, gamma):
     :return: Retorna um float representando a perda do sinal entre a distância d0 e d.
     """
     # return path_loss(d) + 10 * gamma * log10(d / d0)
-    return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+    return 17 - (60 + 10 * gamma * np.log10(d / d0))  # igual está na tabela
 
 
 @jit
 def tree_par_log(x):
-    return -17.74321 - 15.11596 * math.log(x + 2.1642)
+    return -17.74321 - 15.11596 * np.log(x + 2.1642)
 
 
 @jit
@@ -560,7 +560,7 @@ def f_cuda(x):
     """
 
     # Cria uma matriz para guardar os resultados calculados
-    ram_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
+    ram_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float64)
     # matrix_results = np.zeros(shape=(int(largura_planta / precisao), int(comprimento_planta / precisao)))
 
     ## 384 threads

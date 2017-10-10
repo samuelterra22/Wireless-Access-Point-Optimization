@@ -3,6 +3,10 @@ from numba import cuda
 from numba import *
 from timeit import default_timer as timer
 
+import numpy as np
+
+from pylab import *
+
 from numba import *
 from numba import cuda
 
@@ -48,11 +52,11 @@ def mandel_kernel(min_x, max_x, min_y, max_y, image, iters):
     gridY = cuda.gridDim.y * cuda.blockDim.y
 
     ## CUDA FIX
-    for x in range(startX, width, gridX):
+    for x in prange(startX, width, gridX):
         # for x in range(width):
         real = min_x + x * pixel_size_x
         ## CUDA FIX
-        for y in range(startY, height, gridY):
+        for y in prange(startY, height, gridY):
             # for y in range(height):
             imag = min_y + y * pixel_size_y
             image[y, x] = mandel_gpu(real, imag, iters)
