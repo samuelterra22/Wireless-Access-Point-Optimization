@@ -18,7 +18,7 @@ Point Informado.
 """
 
 
-@autojit
+@jit
 def read_walls_from_dxf(dxf_path):
     """
     Método responsável por ler um arquivo DXF e filtrar pela camada ARQ as paredes do ambiente.
@@ -56,7 +56,7 @@ def read_walls_from_dxf(dxf_path):
     return walls
 
 
-@autojit
+@jit
 def side(aX, aY, bX, bY, cX, cY):
     """
     Returns a position of the point c relative to the line going through a and b
@@ -70,7 +70,7 @@ def side(aX, aY, bX, bY, cX, cY):
     return 1 if d > 0 else (-1 if d < 0 else 0)
 
 
-@autojit
+@jit
 def is_point_in_closed_segment(aX, aY, bX, bY, cX, cY):
     """
     Returns True if c is inside closed segment, False otherwise.
@@ -93,7 +93,7 @@ def is_point_in_closed_segment(aX, aY, bX, bY, cX, cY):
     return aX == cX and aY == cY
 
 
-@autojit
+@jit
 def closed_segment_intersect(aX, aY, bX, bY, cX, cY, dX, dY):
     """ Verifies if closed segments a, b, c, d do intersect.
     """
@@ -131,7 +131,7 @@ def closed_segment_intersect(aX, aY, bX, bY, cX, cY, dX, dY):
 ## TODO: otimizar este procedimento pois está fazendo a simulação ficar 163x mais lento
 ## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
 ## @numba.jit(target='cpu', forceobj=True)
-@autojit
+@jit
 def absorption_in_walls(apX, apY, destinyX, destinyY):
     intersections = 0
 
@@ -151,7 +151,7 @@ def absorption_in_walls(apX, apY, destinyX, destinyY):
     return intersecoes_com_paredes * miliWatts_absorvido_por_parede
 
 
-@autojit
+@jit
 def mw_to_dbm(mW):
     """
     Método que converte a potência recebida dada em mW para dBm
@@ -161,7 +161,7 @@ def mw_to_dbm(mW):
     return 10. * log10(mW)
 
 
-@autojit
+@jit
 def dbm_to_mw(dBm):
     """
     Método que converte a potência recebida dada em dBm para mW.
@@ -171,7 +171,7 @@ def dbm_to_mw(dBm):
     return 10 ** (dBm / 10.)
 
 
-@autojit
+@jit
 def calc_distance(x1, y1, x2, y2):
     """
     Método responsável por realizar o calculo da distância entre dois pontos no plano cartesiano.
@@ -183,8 +183,7 @@ def calc_distance(x1, y1, x2, y2):
     """
     return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
 
-
-@autojit
+@jit
 def log_distance(d0, d, gamma):
     """
     Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
@@ -198,13 +197,12 @@ def log_distance(d0, d, gamma):
     # return path_loss(d) + 10 * gamma * log10(d / d0)
     return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
 
-
-@autojit
+@jit
 def tree_par_log(x):
     return -17.74321 - 15.11596 * math.log(x + 2.1642)
 
 
-@autojit
+@jit
 def propagation_model(x, y, apX, apY):
     d = calc_distance(x, y, apX, apY)
 
@@ -221,7 +219,7 @@ def propagation_model(x, y, apX, apY):
 
     return value
 
-
+@jit
 def objective_function(matrix):
     """
     Função objetivo para a avaliação da solução atual.
@@ -252,8 +250,7 @@ def simulate_kernel(apX, apY, matrix_results):
             matrix_results[x][y] = propagation_model_gpu(x, y, apX, apY)
 
 
-# @numba.jit()
-def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=True):
+def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
     """
     Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
     :param point: Ponto contendo posição [x, y] de referência do ponto.
@@ -270,8 +267,8 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
     t = np.random.uniform(0.0, 2.0 * np.pi, num)
     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
 
-    x = r * np.cos(t) + point[0]
-    y = r * np.sin(t) + point[1]
+    x = r * np.cos(t) + pointX
+    y = r * np.sin(t) + pointY
 
     # Converte todos os valores negativos da lista em positivos
     if absolute_values:
@@ -288,8 +285,8 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
     else:
         return [x, y]
 
-
-def perturb(S):
+@jit
+def perturb(SX, SY):
     """
      Função que realiza uma perturbação na Solução S.
      Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
@@ -297,10 +294,10 @@ def perturb(S):
     :return: Retorna um ponto dentro do raio informado.
     """
     # Obtem um ponto aleatorio em um raio de X metros
-    return get_point_in_circle(point=S, ray=10)
+    return get_point_in_circle(SX, SY, 10)
 
 
-@autojit
+@jit
 def f(pointX, pointY):
     """
     Valor da função objetivo correspondente á configuração x;
@@ -318,11 +315,7 @@ def f(pointX, pointY):
 
     d_matrix.to_host()
 
-    goal = objective_function(g_matrix)
-
-
-    return goal
-
+    return objective_function(g_matrix)
 
 def simulated_annealing(x0, y0, M, P, L, T0, alpha):
     """
@@ -349,7 +342,7 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
         while True:
 
             # Tera que mandar o ponto atual e a matriz (certeza?) tbm. Realiza a seleção do ponto.
-            Si = perturb(S)
+            Si = perturb(S[0], S[1])
             fSi = f(Si[0], Si[1])
 
             # showSolution(Si)
@@ -451,7 +444,7 @@ if __name__ == '__main__':
 
     bests = []
 
-    for i in range(100):
+    for i in range(max_SA):
         print("Calculando o melhor ponto [" + str(i) + "]")
         bests.append(
             simulated_annealing(access_point[0], access_point[1], max_inter, max_pertub, num_max_succ, temp_inicial,
