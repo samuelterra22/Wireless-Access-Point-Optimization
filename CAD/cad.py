@@ -4,7 +4,7 @@ import ezdxf
 # dwg = ezdxf.readfile("../DXFs/bloco-A-l.dxf")
 # dwg = ezdxf.readfile("../DXFs/bloco-A-c.dxf")
 # dwg = ezdxf.readfile("../DXFs/retangulo1.dxf")
-dwg = ezdxf.readfile("../DXFs/bloco-a-linhas-porta.dxf")
+dwg = ezdxf.readfile("../DXFs/bloco-a-linhas-sem-porta.dxf")
 
 modelspace = dwg.modelspace()
 

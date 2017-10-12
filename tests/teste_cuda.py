@@ -3,10 +3,12 @@ import tkinter as tk
 from datetime import datetime
 from math import sqrt, pi, log10, exp
 from random import random
+import random as rd
 
 import ezdxf
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import matrix
 import pygame
 
 from numba import autojit, prange, cuda, jit
@@ -32,7 +34,8 @@ def read_walls_from_dxf(dxf_path):
 
     modelspace = dwg.modelspace()
 
-    escala = 7
+    ##TODO 7 por que?
+    # escala = 7
 
     xMin = -1
     yMin = -1
@@ -132,10 +135,13 @@ def closed_segment_intersect(aX, aY, bX, bY, cX, cY, dX, dY):
 ## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
 ## @numba.jit(target='cpu', forceobj=True)
 @jit
-def absorption_in_walls(apX, apY, destinyX, destinyY):
+def absorption_in_walls(apX, apY, destinyX, destinyY, floor_plan):
     intersections = 0
 
     size = len(floor_plan)
+
+    # if size > 0:
+    #     intersections = 1000000000
 
     for i in range(size):
         # Coordenadas da parede
@@ -144,9 +150,12 @@ def absorption_in_walls(apX, apY, destinyX, destinyY):
                                     floor_plan[i][3]):
             intersections += 1
 
-    intersecoes_com_paredes = intersections / 2
+    ## OBS.: dividir por dois se cada parede for um retangulo no DXF
+    # intersecoes_com_paredes = intersections / 2
+    intersecoes_com_paredes = intersections
 
-    miliWatts_absorvido_por_parede = 100
+    # parede de concredo, de 8 a 15 dB
+    miliWatts_absorvido_por_parede = dbm_to_mw(10)
 
     return intersecoes_com_paredes * miliWatts_absorvido_por_parede
 
@@ -205,18 +214,19 @@ def tree_par_log(x):
 
 
 @jit
-def propagation_model(x, y, apX, apY):
+def propagation_model(x, y, apX, apY, floor_plan):
     d = calc_distance(x, y, apX, apY)
 
     loss_in_wall = 0
 
-    loss_in_wall = absorption_in_walls(apX, apY, x, y)
+    loss_in_wall = absorption_in_walls(apX, apY, x, y, floor_plan)
 
     if d == 0:
         d = 1
 
-    # value = log_distance(1, d, gamma)
-    value = tree_par_log(d) - loss_in_wall
+    value = log_distance(1, d, 3) - loss_in_wall
+    # value = tree_par_log(d) - loss_in_wall
+    # value = loss_in_wall
     # value = tree_par_log(d)
 
     return value
@@ -231,13 +241,27 @@ def objective_function(matrix):
     """
 
     return abs(np.sum(matrix))
+    ##TODO pra avaliar 2 FO de 2 APs, subtraia as duas matrizes (R[x][y] = abs(A[x][y]-B[x][y])) e pegue a soma de R
+    #return abs(np.mean(matrix))
+
+    # minSensibilidade = dbm_to_mw(-84)
+    # g = 0
+    # for line in matrix:
+    #     for value in line:
+    #         g += -1/value
+    #         # if value < minSensibilidade:
+    #         #     g += -1
+    #         # else:
+    #         #     g += value
+    #
+    # return g
 
 
 propagation_model_gpu = cuda.jit(device=True)(propagation_model)
 
 
 @cuda.jit
-def simulate_kernel(apX, apY, matrix_results):
+def simulate_kernel(apX, apY, matrix_results, floor_plan):
     """
     Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
     :param access_point: Access Point com a sua posição.
@@ -250,7 +274,7 @@ def simulate_kernel(apX, apY, matrix_results):
 
     for x in range(startX, WIDTH, gridX):
         for y in range(startY, HEIGHT, gridY):
-            matrix_results[x][y] = propagation_model_gpu(x, y, apX, apY)
+            matrix_results[x][y] = propagation_model_gpu(x, y, apX, apY, floor_plan)
 
 
 def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
@@ -298,7 +322,7 @@ def perturb(SX, SY):
     :return: Retorna um ponto dentro do raio informado.
     """
     # Obtem um ponto aleatorio em um raio de X metros
-    return get_point_in_circle(SX, SY, 10)
+    return get_point_in_circle(SX, SY, WIDTH * 0.01)
 
 
 @jit
@@ -315,7 +339,7 @@ def f(pointX, pointY):
 
     d_matrix = cuda.to_device(g_matrix)
 
-    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix)
+    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
 
     d_matrix.to_host()
 
@@ -456,9 +480,42 @@ def draw_point(color, x, y):
     pygame.draw.line(DISPLAYSURF, color, (x, y), (x, y))
 
 
+def size_of_floor_plan(floor_plan):
+    xMax = yMax = 0
+
+    for lines in floor_plan:
+        if lines[0] > xMax:
+            xMax = lines[0]
+        if lines[2] > xMax:
+            xMax = lines[2]
+
+        if lines[1] > yMax:
+            yMax = lines[1]
+        if lines[3] > yMax:
+            yMax = lines[3]
+
+    # x1 = matrix(floor_plan).transpose()[0].getA()[0]
+    # y1 = matrix(floor_plan).transpose()[1].getA()[0]
+    # x2 = matrix(floor_plan).transpose()[2].getA()[0]
+    # y2 = matrix(floor_plan).transpose()[3].getA()[0]
+    #
+    # x12 = x1+x2
+    # y12 = y1+y2
+    #
+    # xMin = min(x12)
+    # xMax = max(x12)
+    #
+    # yMin = min(y12)
+    # yMax = max(y12)
+
+    # return [xMax - xMin, yMax - yMin]
+    return [xMax, yMax]
+
+
 def draw_floor_plan(floor_plan):
     for line in floor_plan:
-        draw_line(line[0]*escala, line[1]*escala, line[2]*escala, line[3]*escala, WHITE)
+        # draw_line(line[0]*escala, line[1]*escala, line[2]*escala, line[3]*escala, WHITE)
+        draw_line(line[0], line[1], line[2], line[3], WHITE)
 
     # Atualiza a janela do PyGame para que exiba a imagem
     pygame.display.update()
@@ -472,6 +529,8 @@ def get_percentage_of_range(min, max, x):
     :param x: Valor que está no intervalo de min-max que deseja saber sua respectiva porcentagem.
     :return: Retorna uma porcentagem que está de acordo com o intervalo min-max.
     """
+    if (max == min):
+        return 100
 
     ##TODO escala de cor linear, mas poderia ser exponencial (logaritmica)
     return ((x - min) / (max - min)) * 100
@@ -521,7 +580,7 @@ def f_plot(pointX, pointY):
 
     d_matrix = cuda.to_device(g_matrix)
 
-    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix)
+    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
 
     d_matrix.to_host()
 
@@ -579,25 +638,33 @@ if __name__ == '__main__':
     GREEN = (0, 255, 0)
     BLUE = (0, 0, 255)
 
-    walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
-
-    floor_plan = np.array(walls, dtype=np.float64)
-
-    WIDTH = 800
-    HEIGHT = 300
-
-    comprimento_planta = 800
-    largura_planta = 300
-    precisao = 1  # metro
-
-    escala = HEIGHT / largura_planta
-
     # tamanho da matriz = dimensão da planta / precisão
 
-    proporcao_planta = comprimento_planta / largura_planta
-    # WIDTH = int(HEIGHT * proporcao_planta)
+    escala = 1
+    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
+    walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float64)
 
-    access_point = [0, 0]
+    floor_size = size_of_floor_plan(walls)
+    comprimento_planta = floor_size[0]
+    largura_planta = floor_size[1]
+    ## carreguei a planta so para obter a proporcao
+    proporcao_planta = comprimento_planta / largura_planta
+
+    # HEIGHT = int(largura_planta)
+    # WIDTH = int(comprimento_planta)
+    HEIGHT = 600
+    WIDTH = int(HEIGHT * proporcao_planta)
+
+    escala = HEIGHT / largura_planta
+    # escala = WIDTH / comprimento_planta
+    # precisao = 1  # metro
+
+    #walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
+    walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float64)
+
+    initial_point = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
 
     ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
     max_inter = 600
@@ -618,25 +685,32 @@ if __name__ == '__main__':
     max_SA = 1
 
     print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
-    print("Ponto inicial:\t\t\t\t\t" + str([access_point[0], access_point[1]]))
+    print("Ponto inicial:\t\t\t\t\t" + str([initial_point[0], initial_point[1]]))
     print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
     print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
     print("Número máximo de sucessos por iteração:\t\t" + str(num_max_succ))
     print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
     print("Repetições do Simulated Annealing:\t\t" + str(max_SA))
-    input("Aperte qualquer tecla para iniciar.")
+
 
     bests = []
 
     for i in range(max_SA):
         print("Calculando o melhor ponto [" + str(i) + "]")
         bests.append(
-            simulated_annealing(access_point[0], access_point[1], max_inter, max_pertub, num_max_succ, temp_inicial,
+            simulated_annealing(initial_point[0], initial_point[1], max_inter, max_pertub, num_max_succ, temp_inicial,
                                 alpha))
 
     # Media das colunas, média dos melhores pontos
-    best_mean = np.mean(bests, axis=0)
+    # best_mean = np.mean(bests, axis=0)
+    maxFO = 0
+    bestAP = [-1, -1]
+    for ap in bests:
+        ap_fo = objective_function(f_plot(ap[0], ap[1]))
+        if ap_fo > maxFO:
+            maxFO = ap_fo
+            bestAP = ap
 
     # Inicia o PyGame
     pygame.init()
@@ -644,7 +718,8 @@ if __name__ == '__main__':
     # Configura o tamanho da janela
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
-    showSolution(best_mean[0], best_mean[1])
+    showSolution(bestAP[0], bestAP[1])
+    # showSolution(1, 1)
 
-    print("Melhor ponto sugerido pelo algoritmo: " + str(best_mean))
+    print("Melhor ponto sugerido pelo algoritmo: " + str(bestAP))
     input('FIM')
