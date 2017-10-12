@@ -1,1 +1,0 @@
-# The silence is golden
