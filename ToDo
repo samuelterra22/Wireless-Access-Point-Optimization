@@ -29,12 +29,17 @@
 
 #   Instalações necessárias:
 #
-#   * tkinter       ->  apt-get install python3-tk
+#   * tkinter       ->  sudo apt-get install python3-tk
 #   * pygame        ->  sudo apt-get install python3-setuptools, python3 install pygame
 #   * python 3.5    ->  sudo apt-get update,    sudo apt-get install python3
 #   * numpy         ->  sudo pip3 install numpy
 #   * matplotlib    ->  sudo pip3 install matplotlib
-#   * ezdxf         ->  python3 -m pip install ezdxf
+#   * ezdxf         ->  sudo python3 -m pip install ezdxf
+#
+#   Para o cuda:
+#
+#   * python3.6     ->  sudo add-apt-repository ppa:jonathonf/python-3.6 -y, sudo apt-get install python3.6
+#   * Anaconda      ->  https://www.anaconda.com/download/#linux
 #
 
 # Modelar:
