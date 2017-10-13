@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: latin1 -*-
+
 import math
 import tkinter as tk
 from datetime import datetime

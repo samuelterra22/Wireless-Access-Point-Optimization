@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import math
 import random as rd
 from math import sqrt, log10, exp
@@ -235,14 +237,13 @@ def propagation_model(x, y, apX, apY, floor_plan):
 
 @jit
 def objective_function(matrix):
-# def objective_function(x):
+    # def objective_function(x):
     """
     Função objetivo para a avaliação da solução atual.
     :param matrix: Matriz a ser avaliada.
     :return: Retorna a soma de todos os elementos da metriz.
     """
 
-    return abs(np.sum(matrix))
     ##TODO pra avaliar 2 FO de 2 APs, subtraia as duas matrizes (R[x][y] = abs(A[x][y]-B[x][y])) e pegue a soma de R
     # return abs(np.mean(matrix))
 
@@ -259,6 +260,10 @@ def objective_function(matrix):
     # return g
     # return abs(np.sum(np.power(10, matrix)))
     # return pow(10, x)
+    return abs(np.sum(matrix))
+
+    # sum_reduce = cuda.reduce(lambda a, b: a + b)
+    # return sum_reduce(np.array([10 ** (x / 10.) for line in matrix for x in line]))
 
 
 @cuda.jit
@@ -298,6 +303,7 @@ def simulate_kernel(apX, apY, matrix_results, floor_plan):
 
 
 propagation_model_gpu = cuda.jit(device=True)(propagation_model)
+
 
 def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
     """
@@ -380,6 +386,7 @@ def f(pointX, pointY):
     #
     # return abs(np.sum(g_soma))
     return objective_function(g_matrix)
+
 
 def simulated_annealing(x0, y0, M, P, L, T0, alpha):
     """
@@ -633,7 +640,6 @@ def get_color_gradient(steps=250):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-
     # COLORS = [
     #     '#0C0786', '#100787', '#130689', '#15068A', '#18068B', '#1B068C', '#1D068D', '#1F058E',
     #     '#21058F', '#230590', '#250591', '#270592', '#290593', '#2B0594', '#2D0494', '#2F0495',
