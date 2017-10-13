@@ -1,13 +1,13 @@
-from math import sqrt, log10, exp
-from random import random
-from colour import Color
-from numba import cuda, jit
-
 import math
 import random as rd
+from math import sqrt, log10, exp
+from random import random
+
 import ezdxf
 import numpy as np
 import pygame
+from colour import Color
+from numba import cuda, jit
 
 """
 Algoritmo que realiza a simulação da propagação do sinal wireless de determinado ambiente 2D de acordo com um Access
@@ -127,13 +127,11 @@ def closed_segment_intersect(aX, aY, bX, bY, cX, cY, dX, dY):
 
 
 ## TODO: otimizar este procedimento pois está fazendo a simulação ficar 163x mais lento
-## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
+## @numba.jit("float32( int32[2], int32[2], List(List(int64)) )", target='parallel')
 ## @numba.jit(target='cpu', forceobj=True)
 @jit
 def absorption_in_walls(apX, apY, destinyX, destinyY, floor_plan):
     intersections = 0
-
-    SENSITIVITY = dbm_to_mw(-75)
 
     size = len(floor_plan)
 
@@ -151,12 +149,11 @@ def absorption_in_walls(apX, apY, destinyX, destinyY, floor_plan):
     # intersecoes_com_paredes = intersections / 2
     intersecoes_com_paredes = intersections
 
-    # parede de concredo, de 8 a 15 dB
-    miliWatts_absorvido_por_parede = dbm_to_mw(10)
+    # parede de concredo, de 8 a 15 dB. Por conta da precisao em casas decimais do float32, é melhor pegar a ordem de
+    # magnitude com o dBm do que tentar usar o valor exato com mW
+    dbm_absorvido_por_parede = 8
 
-    loss = intersecoes_com_paredes * miliWatts_absorvido_por_parede
-
-    return loss if loss > SENSITIVITY else 0
+    return intersecoes_com_paredes * dbm_absorvido_por_parede
 
 
 @jit
@@ -189,7 +186,7 @@ def calc_distance(x1, y1, x2, y2):
     :param y2: Valor de Y no ponto 2.
     :return: Retorna um valor float representando a distância dos pontos informados.
     """
-    return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0))
+    return sqrt(pow((x1 - x2), 2.0) + pow((y1 - y2), 2.0)) * precisao
 
 
 @jit
@@ -214,6 +211,10 @@ def tree_par_log(x):
 
 @jit
 def propagation_model(x, y, apX, apY, floor_plan):
+    ## outra coisa: quando conseguir adaptar o SA para varios APs (ex.: 2 ou 3), acho que convem testar uma alteracao
+    # no propagation_model: zerarmos de acordo com a sensibilidade na propria matriz de propagacao ao inves de somente
+    # no showSolucao. Talvez o SA convirja mais rapido do que deixarmos os dBms inuteis
+
     d = calc_distance(x, y, apX, apY)
 
     loss_in_wall = 0
@@ -224,6 +225,7 @@ def propagation_model(x, y, apX, apY, floor_plan):
         d = 1
 
     value = log_distance(1, d, 3) - loss_in_wall
+
     # value = tree_par_log(d) - loss_in_wall
     # value = loss_in_wall
     # value = tree_par_log(d)
@@ -233,6 +235,7 @@ def propagation_model(x, y, apX, apY, floor_plan):
 
 @jit
 def objective_function(matrix):
+# def objective_function(x):
     """
     Função objetivo para a avaliação da solução atual.
     :param matrix: Matriz a ser avaliada.
@@ -254,9 +257,27 @@ def objective_function(matrix):
     #         #     g += value
     #
     # return g
+    # return abs(np.sum(np.power(10, matrix)))
+    # return pow(10, x)
 
 
-propagation_model_gpu = cuda.jit(device=True)(propagation_model)
+@cuda.jit
+def objective_function_kernel(matrix, soma):
+    """
+    Função objetivo para a avaliação da solução atual.
+    :param matrix: Matriz a ser avaliada.
+    :return: Retorna a soma de todos os elementos da metriz.
+    """
+    W = len(matrix)
+    H = len(matrix[0])
+
+    startX, startY = cuda.grid(2)
+    gridX = cuda.gridDim.x * cuda.blockDim.x
+    gridY = cuda.gridDim.y * cuda.blockDim.y
+
+    for x in range(startX, W, gridX):
+        for y in range(startY, H, gridY):
+            soma += matrix[x][y]
 
 
 @cuda.jit
@@ -274,6 +295,9 @@ def simulate_kernel(apX, apY, matrix_results, floor_plan):
     for x in range(startX, WIDTH, gridX):
         for y in range(startY, HEIGHT, gridY):
             matrix_results[x][y] = propagation_model_gpu(x, y, apX, apY, floor_plan)
+
+
+propagation_model_gpu = cuda.jit(device=True)(propagation_model)
 
 def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
     """
@@ -330,7 +354,7 @@ def f(pointX, pointY):
     :param x: Ponto para realizar a simulação.
     :return: Retorna um numero float representando o valor da situação atual.
     """
-    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float64)
+    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
 
     blockDim = (48, 8)
     gridDim = (32, 16)
@@ -341,8 +365,21 @@ def f(pointX, pointY):
 
     d_matrix.to_host()
 
-    return objective_function(g_matrix)
+    # ----------------------------------------------------------------------------
 
+    # g_matrix = np.asmatrix(g_matrix, dtype=np.float32)
+    # g_soma = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
+    #
+    # d_matrix = cuda.to_device(g_matrix)
+    # d_soma = cuda.to_device(g_soma)
+    #
+    # objective_function_kernel[gridDim, blockDim](d_matrix, d_soma)
+    #
+    # d_matrix.to_host()
+    # d_soma.to_host()
+    #
+    # return abs(np.sum(g_soma))
+    return objective_function(g_matrix)
 
 def simulated_annealing(x0, y0, M, P, L, T0, alpha):
     """
@@ -451,7 +488,6 @@ def print_pygame(matrix_results, access_point):
     """
     matrix_max_value = matrix_results.max()
     matrix_min_value = matrix_results.min()
-
     # print("Desenhando simulação com PyGame...")
 
     # Lê os valores da matriz que contêm valores calculados e colore
@@ -515,8 +551,6 @@ def get_percentage_of_range(min, max, x):
     :param x: Valor que está no intervalo de min-max que deseja saber sua respectiva porcentagem.
     :return: Retorna uma porcentagem que está de acordo com o intervalo min-max.
     """
-    if (max == min):
-        return 100
 
     ##TODO escala de cor linear, mas poderia ser exponencial (logaritmica)
     return ((x - min) / (max - min)) * 100
@@ -547,6 +581,15 @@ def get_color_of_interval(min, max, x):
     :param x: Valor que está dentro do intervalo e que deseja saber sua cor.
     :return: Retorna uma tupla representando um cor no formato RGB.
     """
+    # SENSITIVITY = 3.1622776601683793319988935444327185337195551393252168e-9 # -85
+    # SENSITIVITY = 3.1622776601683793319988935444327185337195551393252168e-8 # -75
+    # SENSITIVITY = 1e-10 # -100
+    # SENSITIVITY = -85
+    # SENSITIVITY = -75
+    SENSITIVITY = -100
+    if x < SENSITIVITY:
+        return hex_to_rgb("#000000")
+
     percentage = get_percentage_of_range(min, max, x)
     color = get_value_in_list(percentage, COLORS)
     return color
@@ -559,7 +602,7 @@ def f_plot(pointX, pointY):
     :param x: Ponto para realizar a simulação.
     :return: Retorna um numero float representando o valor da situação atual.
     """
-    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float64)
+    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
 
     blockDim = (48, 8)
     gridDim = (32, 16)
@@ -579,11 +622,10 @@ def showSolution(SX, SY):
     draw_floor_plan(walls)
 
 
-def get_color_gradient(steps=256):
+def get_color_gradient(steps=250):
     cores = list(Color("red").range_to(Color("green"), steps))
     cores.pop(0)
     cores.pop(len(cores) - 1)
-    cores.append("#000000")
     return cores
 
 
@@ -627,7 +669,7 @@ if __name__ == '__main__':
     #     '#F3EC26', '#F3EE26', '#F2F026', '#F2F126', '#F1F326', '#F0F525', '#F0F623', '#EFF821'
     # ]
 
-    COLORS = get_color_gradient()
+    COLORS = get_color_gradient(16)
 
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -638,9 +680,9 @@ if __name__ == '__main__':
     # tamanho da matriz = dimensão da planta / precisão
 
     escala = 1
-    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
-    walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float64)
+    # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
+    walls = read_walls_from_dxf("./DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float32)
 
     floor_size = size_of_floor_plan(walls)
     comprimento_planta = floor_size[0]
@@ -656,10 +698,11 @@ if __name__ == '__main__':
     escala = HEIGHT / largura_planta
     # escala = WIDTH / comprimento_planta
     # precisao = 1  # metro
+    precisao = 36.0 / WIDTH
 
     # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
-    walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float64)
+    walls = read_walls_from_dxf("./DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float32)
 
     initial_point = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
 
@@ -698,10 +741,11 @@ if __name__ == '__main__':
             simulated_annealing(initial_point[0], initial_point[1], max_inter, max_pertub, num_max_succ, temp_inicial,
                                 alpha))
 
-    # Media das colunas, média dos melhores pontos
-    # best_mean = np.mean(bests, axis=0)
     maxFO = 0
     bestAP = [-1, -1]
+
+    print("Analizando a melhor solução.")
+
     for ap in bests:
         ap_fo = objective_function(f_plot(ap[0], ap[1]))
         if ap_fo > maxFO:
