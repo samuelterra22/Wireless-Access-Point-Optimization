@@ -205,6 +205,10 @@ def log_distance(d0, d, gamma):
     # return path_loss(d) + 10 * gamma * log10(d / d0)
     return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
 
+    ## TODO XXX voltar pra 17 dBm
+    # return -10  - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+    # return 1  - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+
 
 @jit
 def tree_par_log(x):
@@ -342,19 +346,92 @@ def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_
 
 
 @jit
-def perturb(SX, SY):
+def perturba_array(S_array, size):
     """
      Função que realiza uma perturbação na Solução S.
      Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
     :param S: Ponto atual.
     :return: Retorna um ponto dentro do raio informado.
     """
-    # Obtem um ponto aleatorio em um raio de X metros
-    return get_point_in_circle(SX, SY, WIDTH * 0.01)
+    novoS = np.empty([num_aps, 2], np.float32)
+
+    for i in range(size):
+        # Obtem um ponto aleatorio em um raio de X metros
+        novoS[i] = get_point_in_circle(S_array[i][0], S_array[i][1], RAIO_PERTURBACAO)
+
+    return novoS
+
+@jit
+def perturba(S):
+    """
+     Função que realiza uma perturbação na Solução S.
+     Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
+    :param S: Ponto atual.
+    :return: Retorna um ponto dentro do raio informado.
+    """
+
+    return get_point_in_circle(S[0], S[1], RAIO_PERTURBACAO)
 
 
 @jit
-def f(pointX, pointY):
+def avalia_array(S_array, size):
+
+
+    matrizes_propagacao = []
+    for i in range(size):
+        matrizes_propagacao.append( simula_propagacao(S_array[i][0], S_array[i][1]) )
+
+    ## TODO: só pra testes, simples demais
+    # fo_APs = 0
+    # for i in range(size):
+    #     fo_APs += objective_function(matrizes_propagacao[i])
+    #
+    # return fo_APs
+
+    ## simplesmente guloso
+    #matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
+
+    ## penaliza APs muito proximos
+    matriz_sobreposta = sobrepoe_solucoes_SUB_dBm(matrizes_propagacao, size)
+
+    return objective_function(matriz_sobreposta)
+
+
+@jit
+def sobrepoe_solucoes_MAX(propagation_array, size):
+    ## TODO: implementar o max das matrizes
+    max = propagation_array[0]
+    for i in range(1,size):
+        max = np.maximum(propagation_array[i], max)
+
+    return max
+
+@jit
+def sobrepoe_solucoes_SUB(propagation_array, size):
+    ## TODO: implementar o max das matrizes
+    max = propagation_array[0]
+    for i in range(1,size):
+        max = np.subtract(propagation_array[i], max)
+
+    return max
+
+@jit
+def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
+
+    matrixMin = propagation_array[0]
+    matrixMax = propagation_array[0]
+
+    for i in range(1,size):
+        matrixMin = np.minimum(propagation_array[i], matrixMin)
+        matrixMax = np.maximum(propagation_array[i], matrixMax)
+
+    ## pois ao subtrair dBm, deve ser o maior/menor
+    sub = np.divide(matrixMax,matrixMin)
+
+    return sub
+
+@jit
+def simula_propagacao(pointX, pointY):
     """
     Valor da função objetivo correspondente á configuração x;
     :param x: Ponto para realizar a simulação.
@@ -385,10 +462,12 @@ def f(pointX, pointY):
     # d_soma.to_host()
     #
     # return abs(np.sum(g_soma))
-    return objective_function(g_matrix)
+    #return objective_function(g_matrix)
+
+    return g_matrix
 
 
-def simulated_annealing(x0, y0, M, P, L, T0, alpha):
+def simulated_annealing(size, M, P, L, T0, alpha):
     """
     :param T0: Temperatura inicial.
     :param S0: Configuração Inicial (Entrada) -> Ponto?.
@@ -398,11 +477,24 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
     :param alpha: Factor de redução da temperatura (Entrada).
     :return: Retorna um ponto sendo o mais indicado.
     """
-    S = [x0, y0]
+
+    ## cria Soluções iniciais com pontos aleatórios para os APs
+    S_array = np.empty([size, 2], np.float32)
+
+    for i in range(size):
+        # S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
+        S_array[i] = [WIDTH*0.50, HEIGHT*0.50]
+
+    S0 = S_array.copy()
+    print("Solução inicial:\t\t\t\t\t" + str(S0))
+
+    fS = avalia_array(S_array, size)
+
+
     T = T0
     j = 1
 
-    fS = f(S[0], S[1])
+    i_ap = 0
 
     # Loop principal – Verifica se foram atendidas as condições de termino do algoritmo
     while True:
@@ -413,11 +505,22 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
         while True:
 
             # Tera que mandar o ponto atual e a matriz (certeza?) tbm. Realiza a seleção do ponto.
-            Si = perturb(S[0], S[1])
-            fSi = f(Si[0], Si[1])
+            #Si = perturb(S[0], S[1])
+            #fSi = f(Si[0], Si[1])
+
+            ## TODO perturbar todos
+            #Si_array = perturba_array(S_array, num_aps)
+            Si_array = S_array.copy()
+
+            ## a cada iteração do SA, perturba um dos APs
+            i_ap = (i_ap + 1)%num_aps
+
+            Si_array[i_ap] = perturba(S_array[i_ap])
+
+            fSi = avalia_array(Si_array, num_aps)
 
             # showSolution(Si)
-            # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
+            #print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array) + "\t Si: " + str(Si_array))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
@@ -430,7 +533,7 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
             if (deltaFi <= 0) or (exp(-deltaFi / T) > random()):  # randomize()):
                 # print("Ponto escolhido: " + str(Si))
                 ## LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
-                S = Si
+                S_array = Si_array
                 fS = fSi
                 nSucesso = nSucesso + 1
 
@@ -457,7 +560,10 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
     ## saiu do loop principal
     # showSolution(S)
     # print("invocacoes de f(): " + str(contador_uso_func_objetivo))
-    return S
+
+    print("Distância da solução inicial:\t\t\t\t\t" + str(sobrepoe_solucoes_SUB(S_array, num_aps)))
+
+    return S_array
 
 
 def hex_to_rgb(hex):
@@ -486,7 +592,7 @@ def draw_line(x1, y1, x2, y2, color):
     pygame.draw.line(DISPLAYSURF, color, (x1, y1), (x2, y2))
 
 
-def print_pygame(matrix_results, access_point):
+def print_pygame(matrix_results, access_points):
     """
     Método responsável por desenhar a simulação usando o PyGame.
     :param matrix_results: Matriz float contendo os resultados da simulação.
@@ -504,8 +610,8 @@ def print_pygame(matrix_results, access_point):
             draw_point(color, x, y)
 
     # Pinta de vermelho a posição do Access Point
-    ap = access_point
-    draw_point(RED, ap[0], ap[1])
+    for ap in access_points:
+        draw_point(RED, ap[0], ap[1])
 
     # draw_floor_plan(floor_plan)
 
@@ -602,30 +708,19 @@ def get_color_of_interval(min, max, x):
     return color
 
 
-@jit
-def f_plot(pointX, pointY):
-    """
-    Valor da função objetivo correspondente á configuração x;
-    :param x: Ponto para realizar a simulação.
-    :return: Retorna um numero float representando o valor da situação atual.
-    """
-    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
-
-    blockDim = (48, 8)
-    gridDim = (32, 16)
-
-    d_matrix = cuda.to_device(g_matrix)
-
-    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
-
-    d_matrix.to_host()
-
-    return g_matrix
-
-
-def showSolution(SX, SY):
+def showSolution(S_array):
     print("\nDesenhando resultado da simulação com PyGame.")
-    print_pygame(f_plot(SX, SY), [SX, SY])
+
+    matrizes_propagacao = []
+
+    for i in range(len(S_array)):
+        matrizes_propagacao.append( simula_propagacao(S_array[i][0], S_array[i][1]) )
+
+    #propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
+    propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
+
+    print_pygame(propagacao, S_array)
+
     draw_floor_plan(walls)
 
 
@@ -640,40 +735,6 @@ def get_color_gradient(steps=250):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    # COLORS = [
-    #     '#0C0786', '#100787', '#130689', '#15068A', '#18068B', '#1B068C', '#1D068D', '#1F058E',
-    #     '#21058F', '#230590', '#250591', '#270592', '#290593', '#2B0594', '#2D0494', '#2F0495',
-    #     '#310496', '#330497', '#340498', '#360498', '#380499', '#3A049A', '#3B039A', '#3D039B',
-    #     '#3F039C', '#40039C', '#42039D', '#44039E', '#45039E', '#47029F', '#49029F', '#4A02A0',
-    #     '#4C02A1', '#4E02A1', '#4F02A2', '#5101A2', '#5201A3', '#5401A3', '#5601A3', '#5701A4',
-    #     '#5901A4', '#5A00A5', '#5C00A5', '#5E00A5', '#5F00A6', '#6100A6', '#6200A6', '#6400A7',
-    #     '#6500A7', '#6700A7', '#6800A7', '#6A00A7', '#6C00A8', '#6D00A8', '#6F00A8', '#7000A8',
-    #     '#7200A8', '#7300A8', '#7500A8', '#7601A8', '#7801A8', '#7901A8', '#7B02A8', '#7C02A7',
-    #     '#7E03A7', '#7F03A7', '#8104A7', '#8204A7', '#8405A6', '#8506A6', '#8607A6', '#8807A5',
-    #     '#8908A5', '#8B09A4', '#8C0AA4', '#8E0CA4', '#8F0DA3', '#900EA3', '#920FA2', '#9310A1',
-    #     '#9511A1', '#9612A0', '#9713A0', '#99149F', '#9A159E', '#9B179E', '#9D189D', '#9E199C',
-    #     '#9F1A9B', '#A01B9B', '#A21C9A', '#A31D99', '#A41E98', '#A51F97', '#A72197', '#A82296',
-    #     '#A92395', '#AA2494', '#AC2593', '#AD2692', '#AE2791', '#AF2890', '#B02A8F', '#B12B8F',
-    #     '#B22C8E', '#B42D8D', '#B52E8C', '#B62F8B', '#B7308A', '#B83289', '#B93388', '#BA3487',
-    #     '#BB3586', '#BC3685', '#BD3784', '#BE3883', '#BF3982', '#C03B81', '#C13C80', '#C23D80',
-    #     '#C33E7F', '#C43F7E', '#C5407D', '#C6417C', '#C7427B', '#C8447A', '#C94579', '#CA4678',
-    #     '#CB4777', '#CC4876', '#CD4975', '#CE4A75', '#CF4B74', '#D04D73', '#D14E72', '#D14F71',
-    #     '#D25070', '#D3516F', '#D4526E', '#D5536D', '#D6556D', '#D7566C', '#D7576B', '#D8586A',
-    #     '#D95969', '#DA5A68', '#DB5B67', '#DC5D66', '#DC5E66', '#DD5F65', '#DE6064', '#DF6163',
-    #     '#DF6262', '#E06461', '#E16560', '#E26660', '#E3675F', '#E3685E', '#E46A5D', '#E56B5C',
-    #     '#E56C5B', '#E66D5A', '#E76E5A', '#E87059', '#E87158', '#E97257', '#EA7356', '#EA7455',
-    #     '#EB7654', '#EC7754', '#EC7853', '#ED7952', '#ED7B51', '#EE7C50', '#EF7D4F', '#EF7E4E',
-    #     '#F0804D', '#F0814D', '#F1824C', '#F2844B', '#F2854A', '#F38649', '#F38748', '#F48947',
-    #     '#F48A47', '#F58B46', '#F58D45', '#F68E44', '#F68F43', '#F69142', '#F79241', '#F79341',
-    #     '#F89540', '#F8963F', '#F8983E', '#F9993D', '#F99A3C', '#FA9C3B', '#FA9D3A', '#FA9F3A',
-    #     '#FAA039', '#FBA238', '#FBA337', '#FBA436', '#FCA635', '#FCA735', '#FCA934', '#FCAA33',
-    #     '#FCAC32', '#FCAD31', '#FDAF31', '#FDB030', '#FDB22F', '#FDB32E', '#FDB52D', '#FDB62D',
-    #     '#FDB82C', '#FDB92B', '#FDBB2B', '#FDBC2A', '#FDBE29', '#FDC029', '#FDC128', '#FDC328',
-    #     '#FDC427', '#FDC626', '#FCC726', '#FCC926', '#FCCB25', '#FCCC25', '#FCCE25', '#FBD024',
-    #     '#FBD124', '#FBD324', '#FAD524', '#FAD624', '#FAD824', '#F9D924', '#F9DB24', '#F8DD24',
-    #     '#F8DF24', '#F7E024', '#F7E225', '#F6E425', '#F6E525', '#F5E726', '#F5E926', '#F4EA26',
-    #     '#F3EC26', '#F3EE26', '#F2F026', '#F2F126', '#F1F326', '#F0F525', '#F0F623', '#EFF821'
-    # ]
 
     COLORS = get_color_gradient(16)
 
@@ -687,7 +748,7 @@ if __name__ == '__main__':
 
     escala = 1
     # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
-    walls = read_walls_from_dxf("./DXFs/bloco-a-linhas-porta.dxf")
+    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
     floor_plan = np.array(walls, dtype=np.float32)
 
     floor_size = size_of_floor_plan(walls)
@@ -707,16 +768,21 @@ if __name__ == '__main__':
     precisao = 36.0 / WIDTH
 
     # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
-    walls = read_walls_from_dxf("./DXFs/bloco-a-linhas-porta.dxf")
+    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
     floor_plan = np.array(walls, dtype=np.float32)
 
-    initial_point = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
+
+    ## Quantidade de APs
+    num_aps = 2
 
     ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
-    max_inter = 600
+    max_inter = 600*num_aps
 
     ## p
     max_pertub = 5
+
+    #RAIO_PERTURBACAO = WIDTH * 0.01
+    RAIO_PERTURBACAO = WIDTH * 0.025
 
     ## v
     num_max_succ = 80
@@ -725,38 +791,42 @@ if __name__ == '__main__':
     alpha = .85
 
     ## t
-    temp_inicial = 300
+    temp_inicial = 300*2
 
     ## máximo de iterações do S.A.
     max_SA = 1
 
+
     print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
-    print("Ponto inicial:\t\t\t\t\t" + str([initial_point[0], initial_point[1]]))
     print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
     print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
     print("Número máximo de sucessos por iteração:\t\t" + str(num_max_succ))
     print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
     print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
+    print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
+    print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
 
-    bests = []
+    # variasSolucoes = []
+    #
+    # for i in range(max_SA):
+    #     print("Calculando o melhor ponto [" + str(i) + "]")
+    #     variasSolucoes.append(
+    #         simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha))
+    #
+    # maxFO = 0
+    # bestSolution = variasSolucoes[0]
+    #
+    # print("Analizando a melhor solução.")
+    #
+    # for ap_array in variasSolucoes:
+    #     ap_array_fo = avalia_array(ap_array)
+    #     if ap_array_fo > maxFO:
+    #         maxFO = ap_array_fo
+    #         bestSolution = ap_array
 
-    for i in range(max_SA):
-        print("Calculando o melhor ponto [" + str(i) + "]")
-        bests.append(
-            simulated_annealing(initial_point[0], initial_point[1], max_inter, max_pertub, num_max_succ, temp_inicial,
-                                alpha))
-
-    maxFO = 0
-    bestAP = [-1, -1]
-
-    print("Analizando a melhor solução.")
-
-    for ap in bests:
-        ap_fo = objective_function(f_plot(ap[0], ap[1]))
-        if ap_fo > maxFO:
-            maxFO = ap_fo
-            bestAP = ap
+    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
+    bestSolution_fo = objective_function(bestSolution)
 
     # Inicia o PyGame
     pygame.init()
@@ -764,9 +834,9 @@ if __name__ == '__main__':
     # Configura o tamanho da janela
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestAP))
+    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: "+ str(bestSolution_fo))
 
-    showSolution(bestAP[0], bestAP[1])
+    showSolution(bestSolution)
     # showSolution(1, 1)
 
     input('\nFim de execução.')

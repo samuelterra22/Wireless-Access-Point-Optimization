@@ -108,3 +108,12 @@
 # se ainda der tempo, aumentar a precição da propagação (paredes de grossuras diferentes, interação entre mais de 3 APs = coloração de grafos)
 # se ainda der tempo, ilustrar o processo com o pyGames
 # se ainda der tempo, colocar na FO também a demanda de APs de acordo com a densidade de pessoas (trabalho de disciplina com o Calixto)
+
+
+
+# TO DO:
+# Resumo do resultado final. Porcentagem de valores bons, ruins e medios. Definir o que é 'bom', 'ruim' e 'medio'.
+# Criar funcionalidade usando o PyGame. Usuário clina na tela e gera uma simulação de acordo com o ponto do evento do clique do mouse.
+# Modificar o raio AND (iteracoes, tempInicial)
+# Modificar a solução inicial (0,0, meio, aleatoria)
+# Teste com um AP transmitindo uma potencia mais baixa que 17 dBm (10 ou 1 ou -10)
