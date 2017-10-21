@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 
 import math
 import random as rd
