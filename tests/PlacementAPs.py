@@ -13,6 +13,8 @@ import pygame
 from colour import Color
 from numba import cuda, jit
 
+import cProfile
+
 """
 Algoritmo que realiza a simulação da propagação do sinal wireless de determinado ambiente 2D de acordo com um Access
 Point Informado.
@@ -767,6 +769,7 @@ def run():
     print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
     print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
+    print("Raio de perturbação:\t\t" + str(RAIO_PERTURBACAO) + "\n")
     print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
     print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
 
@@ -869,9 +872,11 @@ if __name__ == '__main__':
     max_SA = 1
 
     # run()
-    profile.runctx('run()', globals(), locals())
+    # profile.runctx('run()', globals(), locals(),'tese')
+    cProfile.run('run()', 'PlacementAPs.cprof')
 
     ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
     ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
 
     # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    # https://julien.danjou.info/blog/2015/guide-to-python-profiling-cprofile-concrete-case-carbonara
