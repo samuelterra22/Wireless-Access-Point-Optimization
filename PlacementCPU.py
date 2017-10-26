@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: latin1 -*-
 
 import math
 import tkinter as tk
@@ -14,6 +13,7 @@ import pygame
 
 from numba import autojit, prange, cuda, jit
 import numba
+import profile
 
 contador_uso_func_objetivo = 0
 
@@ -62,15 +62,17 @@ debug = False
 
 
 
-floor_plan = np.array(read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf"), np.int32)
+#floor_plan = np.array(read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-porta.dxf"), np.int32)
 
 ## print(numba.typeof(floor_plan))
 
 
 heat_map = None
 
-WIDTH = 350
-HEIGHT = 200
+# WIDTH = 350
+# HEIGHT = 200
+WIDTH = 70
+HEIGHT = 40
 
 comprimento_planta = 800
 largura_planta = 600
@@ -220,7 +222,7 @@ def closed_segment_intersect(a, b, c, d):
 ## @numba.jit("float64( int32[2], int32[2], List(List(int64)) )", target='parallel')
 ## @numba.jit(target='cpu', forceobj=True)
 # @numba.jit()
-# @numba.jit("f8(u4[:,:],u4[:,:],u4[:,:,:,:])", target='cpu')
+# @numba.jit("f4(u4[:,:],u4[:,:],u4[:,:,:,:])", target='cpu')
 # @numba.jit()
 def absorption_in_walls(access_point, destiny, walls):
     # Seus pontos (origem, destino)
@@ -421,7 +423,7 @@ def tree_par_log(x):
 
 
 ## TODO jit trava run
-# @numba.jit("(u4,u4,u4[:,:])", target='cpu')
+@numba.jit("(u4,u4,u4[:,:])", target='cpu')
 def propagation_model(x, y, access_point):
     d = calc_distance(x, y, access_point[0], access_point[1])
 
@@ -433,7 +435,7 @@ def propagation_model(x, y, access_point):
 
     # inicio = datetime.now()
 
-    loss_in_wall = absorption_in_walls(access_point, [x, y], walls=floor_plan)
+    #loss_in_wall = absorption_in_walls(access_point, [x, y], walls=floor_plan)
 
     # print(str((datetime.now() - inicio).microseconds/1000) + " microsegundos ==> absorption_in_walls")
 
@@ -508,7 +510,7 @@ def get_percentage_of_range(min, max, x):
     return ((x - min) / (max - min)) * 100
 
 
-# @numba.jit("u1[:](f8,i1[i1[:]])", target='cpu')
+# @numba.jit("u1[:](f4,i1[i1[:]])", target='cpu')
 def get_value_in_list(percent, list):
     """
     Método retorna o valor de uma posição de uma lista. A posição é calculada de acordo a porcentagem.
@@ -524,7 +526,7 @@ def get_value_in_list(percent, list):
     return hex_to_rgb(list[int(position - 1)])
 
 
-# @numba.jit("i1[:](f8,f8,f8)", target='cpu')
+# @numba.jit("i1[:](f4,f4,f4)", target='cpu')
 def get_color_of_interval(min, max, x):
     """
     Este método retorna uma cor de acordo com o valor que está entre o intervalo min-max. Em outras palavras,
@@ -540,7 +542,7 @@ def get_color_of_interval(min, max, x):
     return color
 
 
-@numba.jit("f8(f8[:,:])", target='cpu')
+@numba.jit("f4(f4[:,:])", target='cpu')
 def objective_function(matrix):
     """
     Função objetivo para a avaliação da solução atual.
@@ -555,8 +557,10 @@ def objective_function(matrix):
     return abs(np.sum(matrix))
 
 
-# @numba.jit("f8[:,:](b1, b1, b1, u4[:,:])", target='cpu')
-def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=None):
+# @numba.jit("f4[:,:](b1, b1, b1, u4[:,:])", target='cpu')
+#def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=None):
+@numba.jit("f4[:,:](u4[:,:])", target='cpu')
+def simulate(access_point):
     """
     Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
     :param save_matrix: Flag que sinaliza se quero salvar a matriz de resultados em um arquivo.
@@ -580,7 +584,8 @@ def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=Non
     #     pygame.display.set_caption('Simulando...')
 
     # Cria uma matriz para guardar os resultados calculados
-    # matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+    #matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+    matrix_results = np.empty([WIDTH, HEIGHT], np.float32)
     # matrix_results = np.zeros(shape=(int(largura_planta / precisao), int(comprimento_planta / precisao)))
 
     # print("Posição do access point: " + str(access_point))
@@ -591,16 +596,16 @@ def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=Non
     # t0 = datetime.now()
 
     ## TODO: fix List Comprehension
-    matrix_results = [[propagation_model(x, y, access_point) for x in range(WIDTH)] for y in
-                      range(HEIGHT)]
-    matrix_results = np.array(matrix_results)
+    # matrix_results = [[propagation_model(x, y, access_point) for x in range(WIDTH)] for y in
+    #                   range(HEIGHT)]
+    # matrix_results = np.array(matrix_results)
 
     ## FOR
-    # for x in range(WIDTH):
-    #     #inicio = datetime.now()
-    #     for y in range(HEIGHT):
-    #         value = propagation_model(x, y, access_point)
-    #         matrix_results[x][y] = value
+    for x in range(WIDTH):
+        #inicio = datetime.now()
+        for y in range(HEIGHT):
+            value = propagation_model(x, y, access_point)
+            matrix_results[x][y] = value
     # print(str((datetime.now() - inicio).microseconds/1000.0 ) + " milisegundos ==> por LINHA")
 
     # t1 = datetime.now()
@@ -640,8 +645,8 @@ def simulate(save_matrix=False, show_pygame=False, debug=False, access_point=Non
     return matrix_results
 
 
-# @numba.jit("u4[:,:](u4[:,:],u4,b1,u4,b1)")
-def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=True):
+@numba.jit("u4[:,:](u4[:,:],u4)")
+def get_point_in_circle(point, ray):
     """
     Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
     :param point: Ponto contendo posição [x, y] de referência do ponto.
@@ -654,6 +659,7 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
     referência.
     :return: Um ponto ou um conjunto de pontos do tipo float.
     """
+    num = 1
 
     t = np.random.uniform(0.0, 2.0 * np.pi, num)
     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
@@ -662,9 +668,12 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
     y = r * np.sin(t) + point[1]
 
     # Converte todos os valores negativos da lista em positivos
-    if absolute_values:
-        x = [abs(k) for k in x]
-        y = [abs(k) for k in y]
+# if absolute_values:
+#     x = [abs(k) for k in x]
+#     y = [abs(k) for k in y]
+
+    x = round(abs(x[0]))
+    y = round(abs(y[0]))
 
     # if debug:
     #     plt.plot(x, y, "ro", ms=1)
@@ -677,15 +686,15 @@ def get_point_in_circle(point, ray, round_values=True, num=1, absolute_values=Tr
     #                                                                                 y[i])))
     #     plt.show()
 
-    if round_values:
-        x = [round(k) for k in x]
-        y = [round(k) for k in y]
+#if round_values:
+    # x = [round(k) for k in x]
+    # y = [round(k) for k in y]
 
     # Verifica se o retorno será um ponto único ou uma lista de pontos.
-    # if num == 1:
-    return [x[0], y[0]]
-    # else:
-    #    return [x, y]
+# if num == 1:
+    #return [x[0], y[0]]
+# else:
+    return [x, y]
 
 
 @numba.jit("u4()")
@@ -706,10 +715,10 @@ def perturb(S):
     :return: Retorna um ponto dentro do raio informado.
     """
     # Obtem um ponto aleatorio em um raio de X metros
-    return get_point_in_circle(point=S, ray=10)
+    return get_point_in_circle(S,10)
 
 
-@numba.jit("f8(u4[:,:])")
+@numba.jit("f4(u4[:,:])")
 def f(x):
     """
     Valor da função objetivo correspondente á configuração x;
@@ -717,21 +726,21 @@ def f(x):
     :return: Retorna um numero float representando o valor da situação atual.
     """
 
-    inicio = datetime.now()
+    # inicio = datetime.now()
 
-    matrix_result = simulate(save_matrix=False, show_pygame=False, debug=False, access_point=x)
+    matrix_result = simulate(x)
 
     goal = objective_function(matrix_result)
 
     # print("Função objetivo: " + str(goal))
-    print(str((datetime.now() - inicio).seconds) + " segundos ==> por f(x)")
+    # print(str((datetime.now() - inicio).seconds) + " segundos ==> por f(x)")
 
     # contador_uso_func_objetivo += 1
 
     return goal
 
 
-@numba.jit("f8()")
+@numba.jit("f4()")
 def randomize():
     """
     Função que gera um número aleatório no intervalo [0,1];
@@ -747,11 +756,11 @@ def randomize():
 
 @numba.jit("void(u4[:,:])", target='cpu')
 def showSolution(S):
-    print_pygame(simulate(save_matrix=False, show_pygame=False, debug=False, access_point=S), S)
+    print_pygame(simulate(S), S)
     draw_floor_plan(floor_plan)
 
 
-# @numba.jit("u8[:,:]( u8[:,:], u8, u8, u8, u8, f8)", target='cpu')
+# @numba.jit("u8[:,:]( u8[:,:], u8, u8, u8, u8, f4)", target='cpu')
 def simulated_annealing(S0, M, P, L, T0, alpha):
     """
 
@@ -853,11 +862,7 @@ def intersect(A, B, C, D):
         return 1
 
 
-########################################################################################################################
-#   Main                                                                                                               #
-########################################################################################################################
-if __name__ == '__main__':
-
+def run():
     if False:
         w = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-A-l.dxf")
 
@@ -891,20 +896,29 @@ if __name__ == '__main__':
         temp_inicial = 300
 
         # Marca o tempo do inicio da simulação
-        inicio = datetime.now()
+        #inicio = datetime.now()
 
-        point = simulated_annealing(S0=access_point, M=max_inter, P=max_pertub, L=num_max_succ, T0=temp_inicial,
-                                    alpha=alpha)
+        point = simulated_annealing(access_point, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
 
         # Marca o tempo do fim da simulação
-        fim = datetime.now()
+        #fim = datetime.now()
 
-        time_seconds = (fim - inicio).seconds
-        time_minutes = time_seconds / 60
-
-        print("\nInicio: \t" + str(inicio.time()))
-        print("Fim: \t\t" + str(fim.time()))
-        print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
+        # time_seconds = (fim - inicio).seconds
+        # time_minutes = time_seconds / 60
+        #
+        # print("\nInicio: \t" + str(inicio.time()))
+        # print("Fim: \t\t" + str(fim.time()))
+        # print("Duração: \t" + str(time_seconds) + " segundos (" + str(round(time_minutes, 2)) + " minutos).\n")
 
         print("Melhor ponto sugerido pelo algoritmo: " + str(point))
         # input('\nPrecione qualquer tecla para encerrar a aplicação.')
+
+########################################################################################################################
+#   Main                                                                                                               #
+########################################################################################################################
+if __name__ == '__main__':
+    #run()
+    profile.runctx('run()', globals(), locals())
+
+    ## python ../PlacementCPU.py | egrep "(tottime)|(PlacementCPU.py)" | tee ../cProfile/PlacementCPU.py_COM-JIT.txt
+    ## cat ../cProfile/PlacementCPU.py_COM-JIT.txt | sort -k 2 -r

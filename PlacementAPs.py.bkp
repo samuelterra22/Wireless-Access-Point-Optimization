@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import math
-import profile
 import random as rd
 from math import sqrt, log10, exp
 from random import random
@@ -311,53 +310,19 @@ def simulate_kernel(apX, apY, matrix_results, floor_plan):
 propagation_model_gpu = cuda.jit(device=True)(propagation_model)
 
 
-# TODO copiar a versão mais enxuta do PlacementGPUaps.py
-
-# def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
-#     """
-#     Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
-#     :param point: Ponto contendo posição [x, y] de referência do ponto.
-#     :param ray: Valor do raio desejado.
-#     :param round_values: Flag que informa se o(s) ponto(s) serão arredondados. Geralmente será usando para retornar
-#     valores discretos para posições da matriz.
-#     :param absolute_values: Flag que informa se o(s) ponto(s) serão absolutos (positivos).
-#     :param num: Número de pontos que deseja gerar. Gera um ponto como default.
-#     :param debug: Flag que quando informada True, printa na tela o(s) ponto(s) gerados e a distância do ponto de
-#     referência.
-#     :return: Um ponto ou um conjunto de pontos do tipo float.
-#     """
-#
-#     t = np.random.uniform(0.0, 2.0 * np.pi, num)
-#     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
-#
-#     x = r * np.cos(t) + pointX
-#     y = r * np.sin(t) + pointY
-#
-#     # Converte todos os valores negativos da lista em positivos
-#     if absolute_values:
-#         x = [abs(k) for k in x]
-#         y = [abs(k) for k in y]
-#
-#     if round_values:
-#         x = [round(k) for k in x]
-#         y = [round(k) for k in y]
-#
-#     # Verifica se o retorno será um ponto único ou uma lista de pontos.
-#     if num == 1:
-#         return [x[0], y[0]]
-#     else:
-#         return [x, y]
-
-@jit
-def get_point_in_circle(pointX, pointY, ray):
+def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
     """
-    MÃ©todo por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
-    :param point: Ponto contendo posiÃ§Ã£o [x, y] de referÃªncia do ponto.
+    Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
+    :param point: Ponto contendo posição [x, y] de referência do ponto.
     :param ray: Valor do raio desejado.
-    valores discretos para posiÃ§Ãµes da matriz.
+    :param round_values: Flag que informa se o(s) ponto(s) serão arredondados. Geralmente será usando para retornar
+    valores discretos para posições da matriz.
+    :param absolute_values: Flag que informa se o(s) ponto(s) serão absolutos (positivos).
+    :param num: Número de pontos que deseja gerar. Gera um ponto como default.
+    :param debug: Flag que quando informada True, printa na tela o(s) ponto(s) gerados e a distância do ponto de
+    referência.
     :return: Um ponto ou um conjunto de pontos do tipo float.
     """
-    num = 1
 
     t = np.random.uniform(0.0, 2.0 * np.pi, num)
     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
@@ -366,11 +331,19 @@ def get_point_in_circle(pointX, pointY, ray):
     y = r * np.sin(t) + pointY
 
     # Converte todos os valores negativos da lista em positivos
+    if absolute_values:
+        x = [abs(k) for k in x]
+        y = [abs(k) for k in y]
 
-    x = round(abs(x[0]))
-    y = round(abs(y[0]))
+    if round_values:
+        x = [round(k) for k in x]
+        y = [round(k) for k in y]
 
-    return list([x, y])
+    # Verifica se o retorno será um ponto único ou uma lista de pontos.
+    if num == 1:
+        return [x[0], y[0]]
+    else:
+        return [x, y]
 
 
 @jit
@@ -389,7 +362,6 @@ def perturba_array(S_array, size):
 
     return novoS
 
-
 @jit
 def perturba(S):
     """
@@ -404,9 +376,11 @@ def perturba(S):
 
 @jit
 def avalia_array(S_array, size):
+
+
     matrizes_propagacao = []
     for i in range(size):
-        matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
+        matrizes_propagacao.append( simula_propagacao(S_array[i][0], S_array[i][1]) )
 
     ## TODO: só pra testes, simples demais
     # fo_APs = 0
@@ -416,7 +390,7 @@ def avalia_array(S_array, size):
     # return fo_APs
 
     ## simplesmente guloso
-    # matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
+    #matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
 
     ## penaliza APs muito proximos
     matriz_sobreposta = sobrepoe_solucoes_SUB_dBm(matrizes_propagacao, size)
@@ -428,36 +402,34 @@ def avalia_array(S_array, size):
 def sobrepoe_solucoes_MAX(propagation_array, size):
     ## TODO: implementar o max das matrizes
     max = propagation_array[0]
-    for i in range(1, size):
+    for i in range(1,size):
         max = np.maximum(propagation_array[i], max)
 
     return max
-
 
 @jit
 def sobrepoe_solucoes_SUB(propagation_array, size):
     ## TODO: implementar o max das matrizes
     max = propagation_array[0]
-    for i in range(1, size):
+    for i in range(1,size):
         max = np.subtract(propagation_array[i], max)
 
     return max
 
-
 @jit
 def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
+
     matrixMin = propagation_array[0]
     matrixMax = propagation_array[0]
 
-    for i in range(1, size):
+    for i in range(1,size):
         matrixMin = np.minimum(propagation_array[i], matrixMin)
         matrixMax = np.maximum(propagation_array[i], matrixMax)
 
     ## pois ao subtrair dBm, deve ser o maior/menor
-    sub = np.divide(matrixMax, matrixMin)
+    sub = np.divide(matrixMax,matrixMin)
 
     return sub
-
 
 @jit
 def simula_propagacao(pointX, pointY):
@@ -491,7 +463,7 @@ def simula_propagacao(pointX, pointY):
     # d_soma.to_host()
     #
     # return abs(np.sum(g_soma))
-    # return objective_function(g_matrix)
+    #return objective_function(g_matrix)
 
     return g_matrix
 
@@ -512,12 +484,13 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
     for i in range(size):
         # S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
-        S_array[i] = [WIDTH * 0.50, HEIGHT * 0.50]
+        S_array[i] = [WIDTH*0.50, HEIGHT*0.50]
 
     S0 = S_array.copy()
-    print("Solução inicial:\n" + str(S0))
+    print("Solução inicial:\t\t\t\t\t" + str(S0))
 
     fS = avalia_array(S_array, size)
+
 
     T = T0
     j = 1
@@ -533,22 +506,22 @@ def simulated_annealing(size, M, P, L, T0, alpha):
         while True:
 
             # Tera que mandar o ponto atual e a matriz (certeza?) tbm. Realiza a seleção do ponto.
-            # Si = perturb(S[0], S[1])
-            # fSi = f(Si[0], Si[1])
+            #Si = perturb(S[0], S[1])
+            #fSi = f(Si[0], Si[1])
 
             ## TODO perturbar todos
-            # Si_array = perturba_array(S_array, num_aps)
+            #Si_array = perturba_array(S_array, num_aps)
             Si_array = S_array.copy()
 
             ## a cada iteração do SA, perturba um dos APs
-            i_ap = (i_ap + 1) % num_aps
+            i_ap = (i_ap + 1)%num_aps
 
             Si_array[i_ap] = perturba(S_array[i_ap])
 
             fSi = avalia_array(Si_array, num_aps)
 
             # showSolution(Si)
-            # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array) + "\t Si: " + str(Si_array))
+            #print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array) + "\t Si: " + str(Si_array))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
@@ -742,9 +715,9 @@ def showSolution(S_array):
     matrizes_propagacao = []
 
     for i in range(len(S_array)):
-        matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
+        matrizes_propagacao.append( simula_propagacao(S_array[i][0], S_array[i][1]) )
 
-    # propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
+    #propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
     propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
 
     print_pygame(propagacao, S_array)
@@ -759,7 +732,72 @@ def get_color_gradient(steps=250):
     return cores
 
 
-def run():
+########################################################################################################################
+#   Main                                                                                                               #
+########################################################################################################################
+if __name__ == '__main__':
+
+    COLORS = get_color_gradient(16)
+
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
+
+    # tamanho da matriz = dimensão da planta / precisão
+
+    escala = 1
+    # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
+    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float32)
+
+    floor_size = size_of_floor_plan(walls)
+    comprimento_planta = floor_size[0]
+    largura_planta = floor_size[1]
+    ## carreguei a planta so para obter a proporcao
+    proporcao_planta = comprimento_planta / largura_planta
+
+    # HEIGHT = int(largura_planta)
+    # WIDTH = int(comprimento_planta)
+    HEIGHT = 200
+    WIDTH = int(HEIGHT * proporcao_planta)
+
+    escala = HEIGHT / largura_planta
+    # escala = WIDTH / comprimento_planta
+    # precisao = 1  # metro
+    precisao = 36.0 / WIDTH
+
+    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
+    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
+    floor_plan = np.array(walls, dtype=np.float32)
+
+
+    ## Quantidade de APs
+    num_aps = 2
+
+    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
+    max_inter = 600*num_aps
+
+    ## p
+    max_pertub = 5
+
+    #RAIO_PERTURBACAO = WIDTH * 0.01
+    RAIO_PERTURBACAO = WIDTH * 0.025
+
+    ## v
+    num_max_succ = 80
+
+    ## a
+    alpha = .85
+
+    ## t
+    temp_inicial = 300*2
+
+    ## máximo de iterações do S.A.
+    max_SA = 1
+
+
     print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
     print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
     print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
@@ -791,87 +829,15 @@ def run():
     bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
     bestSolution_fo = objective_function(bestSolution)
 
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
-    #
-    # # Inicia o PyGame
-    # pygame.init()
-    #
-    # # Configura o tamanho da janela
-    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-    #
-    # showSolution(bestSolution)
-    # # showSolution(1, 1)
-    #
-    # input('\nFim de execução.')
+    # Inicia o PyGame
+    pygame.init()
 
+    # Configura o tamanho da janela
+    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
-########################################################################################################################
-#   Main                                                                                                               #
-########################################################################################################################
-if __name__ == '__main__':
-    COLORS = get_color_gradient(16)
+    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: "+ str(bestSolution_fo))
 
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    RED = (255, 0, 0)
-    GREEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
+    showSolution(bestSolution)
+    # showSolution(1, 1)
 
-    # tamanho da matriz = dimensão da planta / precisão
-
-    escala = 1
-    # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float32)
-
-    floor_size = size_of_floor_plan(walls)
-    comprimento_planta = floor_size[0]
-    largura_planta = floor_size[1]
-    ## carreguei a planta so para obter a proporcao
-    proporcao_planta = comprimento_planta / largura_planta
-
-    # HEIGHT = int(largura_planta)
-    # WIDTH = int(comprimento_planta)
-    HEIGHT = 40
-    WIDTH = int(HEIGHT * proporcao_planta)
-
-    escala = HEIGHT / largura_planta
-    # escala = WIDTH / comprimento_planta
-    # precisao = 1  # metro
-    precisao = 36.0 / WIDTH
-
-    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float32)
-
-    ## Quantidade de APs
-    num_aps = 2
-
-    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
-    max_inter = 600 * num_aps
-
-    ## p
-    max_pertub = 5
-
-    # RAIO_PERTURBACAO = WIDTH * 0.01
-    RAIO_PERTURBACAO = WIDTH * 0.025
-
-    ## v
-    num_max_succ = 80
-
-    ## a
-    alpha = .85
-
-    ## t
-    temp_inicial = 300 * 2
-
-    ## máximo de iterações do S.A.
-    max_SA = 1
-
-    # run()
-    profile.runctx('run()', globals(), locals())
-
-    ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
-    ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
-
-    # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    input('\nFim de execução.')

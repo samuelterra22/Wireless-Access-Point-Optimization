@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import math
-import profile
 import random as rd
 from math import sqrt, log10, exp
 from random import random
@@ -272,92 +271,47 @@ def objective_function(matrix):
     # return sum_reduce(np.array([10 ** (x / 10.) for line in matrix for x in line]))
 
 
-@cuda.jit
-def objective_function_kernel(matrix, soma):
+@jit
+def objective_function(matrix, soma):
     """
     Função objetivo para a avaliação da solução atual.
     :param matrix: Matriz a ser avaliada.
     :return: Retorna a soma de todos os elementos da metriz.
     """
-    W = len(matrix)
-    H = len(matrix[0])
 
-    startX, startY = cuda.grid(2)
-    gridX = cuda.gridDim.x * cuda.blockDim.x
-    gridY = cuda.gridDim.y * cuda.blockDim.y
-
-    for x in range(startX, W, gridX):
-        for y in range(startY, H, gridY):
-            soma += matrix[x][y]
+    soma = abs(np.sum(matrix))
 
 
-@cuda.jit
-def simulate_kernel(apX, apY, matrix_results, floor_plan):
+@jit
+def simulate(apX, apY, matrix_results, floor_plan):
     """
     Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
     :param access_point: Access Point com a sua posição.
     :return: Retorna a matriz NxM contendo o resultado da simulação de acordo com o modelo de propagação.
     """
 
-    startX, startY = cuda.grid(2)
-    gridX = cuda.gridDim.x * cuda.blockDim.x
-    gridY = cuda.gridDim.y * cuda.blockDim.y
+    for x in range(WIDTH):
+        # inicio = datetime.now()
+        for y in range(HEIGHT):
+            value = propagation_model(x, y, apX, apY, floor_plan)
+            matrix_results[x][y] = value
 
-    for x in range(startX, WIDTH, gridX):
-        for y in range(startY, HEIGHT, gridY):
-            matrix_results[x][y] = propagation_model_gpu(x, y, apX, apY, floor_plan)
+    return matrix_results
 
-
-propagation_model_gpu = cuda.jit(device=True)(propagation_model)
-
-
-# TODO copiar a versão mais enxuta do PlacementGPUaps.py
-
-# def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
-#     """
-#     Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
-#     :param point: Ponto contendo posição [x, y] de referência do ponto.
-#     :param ray: Valor do raio desejado.
-#     :param round_values: Flag que informa se o(s) ponto(s) serão arredondados. Geralmente será usando para retornar
-#     valores discretos para posições da matriz.
-#     :param absolute_values: Flag que informa se o(s) ponto(s) serão absolutos (positivos).
-#     :param num: Número de pontos que deseja gerar. Gera um ponto como default.
-#     :param debug: Flag que quando informada True, printa na tela o(s) ponto(s) gerados e a distância do ponto de
-#     referência.
-#     :return: Um ponto ou um conjunto de pontos do tipo float.
-#     """
-#
-#     t = np.random.uniform(0.0, 2.0 * np.pi, num)
-#     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
-#
-#     x = r * np.cos(t) + pointX
-#     y = r * np.sin(t) + pointY
-#
-#     # Converte todos os valores negativos da lista em positivos
-#     if absolute_values:
-#         x = [abs(k) for k in x]
-#         y = [abs(k) for k in y]
-#
-#     if round_values:
-#         x = [round(k) for k in x]
-#         y = [round(k) for k in y]
-#
-#     # Verifica se o retorno será um ponto único ou uma lista de pontos.
-#     if num == 1:
-#         return [x[0], y[0]]
-#     else:
-#         return [x, y]
-
-@jit
-def get_point_in_circle(pointX, pointY, ray):
+#TODO copiar a versão mais limpa do Placement2.py
+def get_point_in_circle(pointX, pointY, ray, round_values=True, num=1, absolute_values=True):
     """
-    MÃ©todo por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
-    :param point: Ponto contendo posiÃ§Ã£o [x, y] de referÃªncia do ponto.
+    Método por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
+    :param point: Ponto contendo posição [x, y] de referência do ponto.
     :param ray: Valor do raio desejado.
-    valores discretos para posiÃ§Ãµes da matriz.
+    :param round_values: Flag que informa se o(s) ponto(s) serão arredondados. Geralmente será usando para retornar
+    valores discretos para posições da matriz.
+    :param absolute_values: Flag que informa se o(s) ponto(s) serão absolutos (positivos).
+    :param num: Número de pontos que deseja gerar. Gera um ponto como default.
+    :param debug: Flag que quando informada True, printa na tela o(s) ponto(s) gerados e a distância do ponto de
+    referência.
     :return: Um ponto ou um conjunto de pontos do tipo float.
     """
-    num = 1
 
     t = np.random.uniform(0.0, 2.0 * np.pi, num)
     r = ray * np.sqrt(np.random.uniform(0.0, 1.0, num))
@@ -366,11 +320,19 @@ def get_point_in_circle(pointX, pointY, ray):
     y = r * np.sin(t) + pointY
 
     # Converte todos os valores negativos da lista em positivos
+    if absolute_values:
+        x = [abs(k) for k in x]
+        y = [abs(k) for k in y]
 
-    x = round(abs(x[0]))
-    y = round(abs(y[0]))
+    if round_values:
+        x = [round(k) for k in x]
+        y = [round(k) for k in y]
 
-    return list([x, y])
+    # Verifica se o retorno será um ponto único ou uma lista de pontos.
+    if num == 1:
+        return [x[0], y[0]]
+    else:
+        return [x, y]
 
 
 @jit
@@ -404,11 +366,13 @@ def perturba(S):
 
 @jit
 def avalia_array(S_array, size):
+    # matrizes_propagacao = np.empty(size, np.float32)
     matrizes_propagacao = []
     for i in range(size):
+        print(S_array[i][0], S_array[i][1])
         matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
 
-    ## TODO: só pra testes, simples demais
+        ## TODO: só pra testes, simples demais
     # fo_APs = 0
     # for i in range(size):
     #     fo_APs += objective_function(matrizes_propagacao[i])
@@ -460,40 +424,19 @@ def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
 
 
 @jit
-def simula_propagacao(pointX, pointY):
+def simula_propagacao(apX, apY):
     """
     Valor da função objetivo correspondente á configuração x;
     :param x: Ponto para realizar a simulação.
     :return: Retorna um numero float representando o valor da situação atual.
     """
-    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
 
-    blockDim = (48, 8)
-    gridDim = (32, 16)
+    matrix_results = np.empty([WIDTH, HEIGHT], np.float32)
+    matrix_results = simulate(apX, apY, matrix_results, floor_plan)
 
-    d_matrix = cuda.to_device(g_matrix)
+    goal = objective_function(matrix_results)
 
-    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
-
-    d_matrix.to_host()
-
-    # ----------------------------------------------------------------------------
-
-    # g_matrix = np.asmatrix(g_matrix, dtype=np.float32)
-    # g_soma = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
-    #
-    # d_matrix = cuda.to_device(g_matrix)
-    # d_soma = cuda.to_device(g_soma)
-    #
-    # objective_function_kernel[gridDim, blockDim](d_matrix, d_soma)
-    #
-    # d_matrix.to_host()
-    # d_soma.to_host()
-    #
-    # return abs(np.sum(g_soma))
-    # return objective_function(g_matrix)
-
-    return g_matrix
+    return goal
 
 
 def simulated_annealing(size, M, P, L, T0, alpha):
@@ -515,7 +458,9 @@ def simulated_annealing(size, M, P, L, T0, alpha):
         S_array[i] = [WIDTH * 0.50, HEIGHT * 0.50]
 
     S0 = S_array.copy()
-    print("Solução inicial:\n" + str(S0))
+    print("Solução inicial:\t\t\t\t\t" + str(S0))
+
+    print("\nlen=" + str(len(S_array)) + " size=" + str(size))
 
     fS = avalia_array(S_array, size)
 
@@ -759,52 +704,6 @@ def get_color_gradient(steps=250):
     return cores
 
 
-def run():
-    print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
-    print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
-    print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
-    print("Número máximo de sucessos por iteração:\t\t" + str(num_max_succ))
-    print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
-    print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
-    print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
-    print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
-    print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
-
-    # variasSolucoes = []
-    #
-    # for i in range(max_SA):
-    #     print("Calculando o melhor ponto [" + str(i) + "]")
-    #     variasSolucoes.append(
-    #         simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha))
-    #
-    # maxFO = 0
-    # bestSolution = variasSolucoes[0]
-    #
-    # print("Analizando a melhor solução.")
-    #
-    # for ap_array in variasSolucoes:
-    #     ap_array_fo = avalia_array(ap_array)
-    #     if ap_array_fo > maxFO:
-    #         maxFO = ap_array_fo
-    #         bestSolution = ap_array
-
-    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    bestSolution_fo = objective_function(bestSolution)
-
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
-    #
-    # # Inicia o PyGame
-    # pygame.init()
-    #
-    # # Configura o tamanho da janela
-    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-    #
-    # showSolution(bestSolution)
-    # # showSolution(1, 1)
-    #
-    # input('\nFim de execução.')
-
-
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
@@ -832,7 +731,7 @@ if __name__ == '__main__':
 
     # HEIGHT = int(largura_planta)
     # WIDTH = int(comprimento_planta)
-    HEIGHT = 40
+    HEIGHT = 200
     WIDTH = int(HEIGHT * proporcao_planta)
 
     escala = HEIGHT / largura_planta
@@ -868,10 +767,46 @@ if __name__ == '__main__':
     ## máximo de iterações do S.A.
     max_SA = 1
 
-    # run()
-    profile.runctx('run()', globals(), locals())
+    print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
+    print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
+    print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
+    print("Número máximo de sucessos por iteração:\t\t" + str(num_max_succ))
+    print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
+    print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
+    print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
+    print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
+    print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
 
-    ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
-    ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
+    # variasSolucoes = []
+    #
+    # for i in range(max_SA):
+    #     print("Calculando o melhor ponto [" + str(i) + "]")
+    #     variasSolucoes.append(
+    #         simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha))
+    #
+    # maxFO = 0
+    # bestSolution = variasSolucoes[0]
+    #
+    # print("Analizando a melhor solução.")
+    #
+    # for ap_array in variasSolucoes:
+    #     ap_array_fo = avalia_array(ap_array)
+    #     if ap_array_fo > maxFO:
+    #         maxFO = ap_array_fo
+    #         bestSolution = ap_array
 
-    # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
+    bestSolution_fo = objective_function(bestSolution)
+
+    # Inicia o PyGame
+    pygame.init()
+
+    # Configura o tamanho da janela
+    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+
+    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+
+    showSolution(bestSolution)
+    # showSolution(1, 1)
+
+    input('\nFim de execução.')

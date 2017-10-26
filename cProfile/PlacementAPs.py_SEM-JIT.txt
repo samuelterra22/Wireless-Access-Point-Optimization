@@ -1,0 +1,5 @@
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.350    0.350 PlacementAPsSemJIT.py:380(avalia_array)
+        1    0.000    0.000    0.350    0.350 PlacementAPsSemJIT.py:437(simula_propagacao)
+        1    0.000    0.000    0.351    0.351 PlacementAPsSemJIT.py:473(simulated_annealing)
+        1    0.000    0.000    0.351    0.351 PlacementAPsSemJIT.py:737(run)
