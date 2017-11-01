@@ -13,7 +13,7 @@ unzip tcc-master.zip
 
 notify-send 'Instalando dependências' 'Iniciando instalação de dependências para a execução do Placement.' --icon=dialog-information
 sudo apt-get update
-sudo apt-get install -y build-essential llvm libsdl1.2-dev libglew1.5-dev freeglut3-dev mesa-common-dev kcachegrind
+sudo apt-get install -y build-essential llvm libsdl1.2-dev libglew1.5-dev freeglut3-dev mesa-common-dev kcachegrind cprofilev
 sudo apt-get -y install python-pip && sudo -H pip install --upgrade pip
 sudo -H pip install ezdxf numpy numba matplotlib pygame colour datetime llvmpy pyprof2calltree
 sudo -H pip install tk || sudo apt install -y python-tk

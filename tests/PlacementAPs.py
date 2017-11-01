@@ -240,8 +240,10 @@ def propagation_model(x, y, apX, apY, floor_plan):
     # value = loss_in_wall
     # value = tree_par_log(d)
 
-    return value
+    # Penaliza o valor se for menor que a sensibilidade da interface Wi-Fi
 
+    # return DBM_MIN_VALUE if value < SENSITIVITY else value
+    return value
 
 @jit
 def objective_function(matrix):
@@ -255,6 +257,7 @@ def objective_function(matrix):
     ##TODO pra avaliar 2 FO de 2 APs, subtraia as duas matrizes (R[x][y] = abs(A[x][y]-B[x][y])) e pegue a soma de R
     # return abs(np.mean(matrix))
 
+    ## Desabilitado pois 'ficou pesado'.
     # minSensibilidade = dbm_to_mw(-84)
     # g = 0
     # for line in matrix:
@@ -268,6 +271,8 @@ def objective_function(matrix):
     # return g
     # return abs(np.sum(np.power(10, matrix)))
     # return pow(10, x)
+
+    ## TODO: Penalizar os valores que estão abaixo da sensibilidade.
     return abs(np.sum(matrix))
 
     # sum_reduce = cuda.reduce(lambda a, b: a + b)
@@ -297,7 +302,10 @@ def objective_function_kernel(matrix, soma):
 def simulate_kernel(apX, apY, matrix_results, floor_plan):
     """
     Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
-    :param access_point: Access Point com a sua posição.
+    :param floor_plan:
+    :param apY:
+    :param apX:
+    :param matrix_results:
     :return: Retorna a matriz NxM contendo o resultado da simulação de acordo com o modelo de propagação.
     """
 
@@ -406,6 +414,7 @@ def perturba(S):
 
 @jit
 def avalia_array(S_array, size):
+
     matrizes_propagacao = []
     for i in range(size):
         matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
@@ -428,7 +437,6 @@ def avalia_array(S_array, size):
 
 @jit
 def sobrepoe_solucoes_MAX(propagation_array, size):
-    ## TODO: implementar o max das matrizes
     max = propagation_array[0]
     for i in range(1, size):
         max = np.maximum(propagation_array[i], max)
@@ -438,12 +446,11 @@ def sobrepoe_solucoes_MAX(propagation_array, size):
 
 @jit
 def sobrepoe_solucoes_SUB(propagation_array, size):
-    ## TODO: implementar o max das matrizes
-    max = propagation_array[0]
+    sub = propagation_array[0]
     for i in range(1, size):
-        max = np.subtract(propagation_array[i], max)
+        sub = np.subtract(propagation_array[i], sub)
 
-    return max
+    return sub
 
 
 @jit
@@ -465,7 +472,8 @@ def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
 def simula_propagacao(pointX, pointY):
     """
     Valor da função objetivo correspondente á configuração x;
-    :param x: Ponto para realizar a simulação.
+    :param pointX:
+    :param pointY: Ponto para realizar a simulação.
     :return: Retorna um numero float representando o valor da situação atual.
     """
     g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
@@ -500,8 +508,8 @@ def simula_propagacao(pointX, pointY):
 
 def simulated_annealing(size, M, P, L, T0, alpha):
     """
+    :param size:
     :param T0: Temperatura inicial.
-    :param S0: Configuração Inicial (Entrada) -> Ponto?.
     :param M: Número máximo de iterações (Entrada).
     :param P: Número máximo de Perturbações por iteração (Entrada).
     :param L: Número máximo de sucessos por iteração (Entrada).
@@ -509,12 +517,12 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     :return: Retorna um ponto sendo o mais indicado.
     """
 
-    ## cria Soluções iniciais com pontos aleatórios para os APs
+    # cria Soluções iniciais com pontos aleatórios para os APs
     S_array = np.empty([size, 2], np.float32)
 
     for i in range(size):
         # S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
-        S_array[i] = [WIDTH * 0.50, HEIGHT * 0.50]
+        S_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
 
     S0 = S_array.copy()
     print("Solução inicial:\n" + str(S0))
@@ -538,31 +546,31 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             # Si = perturb(S[0], S[1])
             # fSi = f(Si[0], Si[1])
 
-            ## TODO perturbar todos
+            # TODO perturbar todos
             # Si_array = perturba_array(S_array, num_aps)
             Si_array = S_array.copy()
 
-            ## a cada iteração do SA, perturba um dos APs
+            # a cada iteração do SA, perturba um dos APs
             i_ap = (i_ap + 1) % num_aps
 
             Si_array[i_ap] = perturba(S_array[i_ap])
 
             fSi = avalia_array(Si_array, num_aps)
 
-            # showSolution(Si)
-            # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array) + "\t Si: " + str(Si_array))
+            # showSolution(Si) print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array)
+            #  + "\t Si: " + str(Si_array))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
 
             # print("deltaFi: " + str(deltaFi))
 
-            ## Minimização: deltaFi >= 0
-            ## Maximização: deltaFi <= 0
+            # Minimização: deltaFi >= 0
+            # Maximização: deltaFi <= 0
             # Teste de aceitação de uma nova solução
             if (deltaFi <= 0) or (exp(-deltaFi / T) > random()):  # randomize()):
                 # print("Ponto escolhido: " + str(Si))
-                ## LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
+                # LEMBRETE: guardar o ponto anterior, S_prev = S (para ver o caminho do Si pro S_prev)
                 S_array = Si_array
                 fS = fSi
                 nSucesso = nSucesso + 1
@@ -609,7 +617,7 @@ def hex_to_rgb(hex):
     return tuple(int(hex[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 
-def draw_line(x1, y1, x2, y2, color):
+def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
     """
     Método responsável por desenhar uma linha reta usando o PyGame de acordo com a posição de dois pontos.
     :param x1: Valor de X no ponto 1.
@@ -622,26 +630,35 @@ def draw_line(x1, y1, x2, y2, color):
     pygame.draw.line(DISPLAYSURF, color, (x1, y1), (x2, y2))
 
 
-def print_pygame(matrix_results, access_points):
+def print_pygame(matrix_results, access_points, DISPLAYSURF):
     """
     Método responsável por desenhar a simulação usando o PyGame.
     :param matrix_results: Matriz float contendo os resultados da simulação.
     :param access_point: Posição (x, y) do ponto de acesso.
     :return: None.
     """
+
     matrix_max_value = matrix_results.max()
-    matrix_min_value = matrix_results.min()
-    # print("Desenhando simulação com PyGame...")
+    # matrix_min_value = matrix_results.min()
+
+    # Se utilizar a função min tradicionar, a penalização de DBM_MIN_VALUE irá interferir no range de cor
+    matrix_min_value = matrix_max_value
+    for x in range(WIDTH):
+        for y in range(HEIGHT):
+            if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
+                matrix_min_value = matrix_results[x][y]
+
+                # print("Desenhando simulação com PyGame...")
 
     # Lê os valores da matriz que contêm valores calculados e colore
     for x in range(WIDTH):
         for y in range(HEIGHT):
             color = get_color_of_interval(matrix_min_value, matrix_max_value, matrix_results[x][y])
-            draw_point(color, x, y)
+            draw_point(DISPLAYSURF, color, x, y)
 
-    # Pinta de vermelho a posição do Access Point
+    # Pinta de vermelho a posição dos Access Points
     for ap in access_points:
-        draw_point(RED, ap[0], ap[1])
+        draw_point(DISPLAYSURF, RED, ap[0], ap[1])
 
     # draw_floor_plan(floor_plan)
 
@@ -649,7 +666,7 @@ def print_pygame(matrix_results, access_points):
     pygame.display.update()
 
 
-def draw_point(color, x, y):
+def draw_point(DISPLAYSURF, color, x, y):
     """
     Método responsável por desenhar um ponto usando o PyGame de acordo com a posição (x,y).
     :param color: A cor que irá ser o ponto.
@@ -677,10 +694,10 @@ def size_of_floor_plan(floor_plan):
     return [xMax, yMax]
 
 
-def draw_floor_plan(floor_plan):
+def draw_floor_plan(floor_plan, DISPLAYSURF):
     for line in floor_plan:
         # draw_line(line[0]*escala, line[1]*escala, line[2]*escala, line[3]*escala, WHITE)
-        draw_line(line[0], line[1], line[2], line[3], WHITE)
+        draw_line(DISPLAYSURF, line[0], line[1], line[2], line[3], WHITE)
 
     # Atualiza a janela do PyGame para que exiba a imagem
     pygame.display.update()
@@ -729,16 +746,17 @@ def get_color_of_interval(min, max, x):
     # SENSITIVITY = 1e-10 # -100
     # SENSITIVITY = -85
     # SENSITIVITY = -75
-    SENSITIVITY = -100
+    # SENSITIVITY = -100
     if x < SENSITIVITY:
         return hex_to_rgb("#000000")
 
     percentage = get_percentage_of_range(min, max, x)
     color = get_value_in_list(percentage, COLORS)
+
     return color
 
 
-def showSolution(S_array):
+def showSolution(S_array, DISPLAYSURF):
     print("\nDesenhando resultado da simulação com PyGame.")
 
     matrizes_propagacao = []
@@ -749,9 +767,9 @@ def showSolution(S_array):
     # propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
     propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
 
-    print_pygame(propagacao, S_array)
+    print_pygame(propagacao, S_array, DISPLAYSURF)
 
-    draw_floor_plan(walls)
+    draw_floor_plan(walls, DISPLAYSURF)
 
 
 def get_color_gradient(steps=250):
@@ -792,27 +810,27 @@ def run():
     #         bestSolution = ap_array
 
     bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    bestSolution_fo = objective_function(bestSolution)
+    bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
 
     print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
     #
     # # Inicia o PyGame
-    # pygame.init()
+    pygame.init()
     #
     # # Configura o tamanho da janela
-    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
     #
-    # showSolution(bestSolution)
+    showSolution(bestSolution, DISPLAYSURF)
     # # showSolution(1, 1)
     #
-    # input('\nFim de execução.')
+    input('\nFim de execução.')
 
 
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    COLORS = get_color_gradient(16)
+    COLORS = get_color_gradient(40)
 
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -822,9 +840,15 @@ if __name__ == '__main__':
 
     # tamanho da matriz = dimensão da planta / precisão
 
+    # dxf_path = "../DXFs/bloco_a/abloco_A_planta baixa_piso1.dxf"
+    dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
+    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
+    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
+
     escala = 1
     # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
+    walls = read_walls_from_dxf(dxf_path)
     floor_plan = np.array(walls, dtype=np.float32)
 
     floor_size = size_of_floor_plan(walls)
@@ -835,7 +859,7 @@ if __name__ == '__main__':
 
     # HEIGHT = int(largura_planta)
     # WIDTH = int(comprimento_planta)
-    HEIGHT = 40
+    HEIGHT = 600  # 40
     WIDTH = int(HEIGHT * proporcao_planta)
 
     escala = HEIGHT / largura_planta
@@ -844,11 +868,14 @@ if __name__ == '__main__':
     precisao = 36.0 / WIDTH
 
     # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
+    walls = read_walls_from_dxf(dxf_path)
     floor_plan = np.array(walls, dtype=np.float32)
 
+    SENSITIVITY = -100
+    DBM_MIN_VALUE = np.finfo(np.float32).min
+
     ## Quantidade de APs
-    num_aps = 2
+    num_aps = 3
 
     ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
     max_inter = 600 * num_aps
@@ -857,6 +884,7 @@ if __name__ == '__main__':
     max_pertub = 5
 
     # RAIO_PERTURBACAO = WIDTH * 0.01
+    # RAIO_PERTURBACAO = WIDTH * 0.0175
     RAIO_PERTURBACAO = WIDTH * 0.025
 
     ## v
@@ -873,7 +901,7 @@ if __name__ == '__main__':
 
     # run()
     # profile.runctx('run()', globals(), locals(),'tese')
-    cProfile.run('run()', 'PlacementAPs.cprof')
+    cProfile.run(statement='run()', filename='PlacementAPs.cprof')
 
     ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
     ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r

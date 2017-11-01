@@ -20,7 +20,8 @@ def p_f_2_k():
     # Pertubações
     D = [5, 10]
 
-    # Tabela verdade com as configurações das possibilidades. Os valores representam a posição dos vetores de parametros.
+    # Tabela verdade com as configurações das possibilidades. Os valores representam a posição dos vetores de
+    # parametros.
     CONFIGURACOES = [
         [1, 1, 1, 1],
         [1, 1, 1, 0],
