@@ -455,6 +455,11 @@ def sobrepoe_solucoes_SUB(propagation_array, size):
 
 @jit
 def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
+
+    # verificar se é veridico
+    if size == 1:
+        return propagation_array[0]
+
     matrixMin = propagation_array[0]
     matrixMax = propagation_array[0]
 
@@ -840,11 +845,16 @@ if __name__ == '__main__':
 
     # tamanho da matriz = dimensão da planta / precisão
 
-    # dxf_path = "../DXFs/bloco_a/abloco_A_planta baixa_piso1.dxf"
-    dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
+    # dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
+    # dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
+
     # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
     # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
+
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta_baixa_piso1.dxf"
+    dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso3.dxf"
 
     escala = 1
     # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
