@@ -234,9 +234,9 @@ def propagation_model(x, y, apX, apY, floor_plan):
     if d == 0:
         d = 1
 
-    value = log_distance(1, d, 3) - loss_in_wall
-
-    # value = tree_par_log(d) - loss_in_wall
+    # value = log_distance(1, d, 3) - loss_in_wall
+    #
+    value = tree_par_log(d) - loss_in_wall
     # value = loss_in_wall
     # value = tree_par_log(d)
 
@@ -382,13 +382,13 @@ def get_point_in_circle(pointX, pointY, ray):
 
     return list([x, y])
 
-
 @jit
 def perturba_array(S_array, size):
     """
      Função que realiza uma perturbação na Solução S.
      Solução pode ser perturbada em um raio 'r' dentro do espaço de simulação.
-    :param S: Ponto atual.
+    :param size:
+    :param S_array:
     :return: Retorna um ponto dentro do raio informado.
     """
     novoS = np.empty([num_aps, 2], np.float32)
@@ -430,7 +430,7 @@ def avalia_array(S_array, size):
     # matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
 
     ## penaliza APs muito proximos
-    matriz_sobreposta = sobrepoe_solucoes_SUB_dBm(matrizes_propagacao, size)
+    matriz_sobreposta = sobrepoe_solucoes_DIV_dBm(matrizes_propagacao, size)
 
     return objective_function(matriz_sobreposta)
 
@@ -454,7 +454,7 @@ def sobrepoe_solucoes_SUB(propagation_array, size):
 
 
 @jit
-def sobrepoe_solucoes_SUB_dBm(propagation_array, size):
+def sobrepoe_solucoes_DIV_dBm(propagation_array, size):
 
     # verificar se é veridico
     if size == 1:
@@ -835,7 +835,7 @@ def run():
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    COLORS = get_color_gradient(40)
+    COLORS = get_color_gradient(25)
 
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -849,11 +849,11 @@ if __name__ == '__main__':
     # dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
 
     # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
-    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
+    dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
 
     # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta_baixa_piso1.dxf"
-    dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso3.dxf"
 
     escala = 1
@@ -881,11 +881,11 @@ if __name__ == '__main__':
     walls = read_walls_from_dxf(dxf_path)
     floor_plan = np.array(walls, dtype=np.float32)
 
-    SENSITIVITY = -100
+    SENSITIVITY = -90
     DBM_MIN_VALUE = np.finfo(np.float32).min
 
     ## Quantidade de APs
-    num_aps = 3
+    num_aps = 2
 
     ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
     max_inter = 600 * num_aps
