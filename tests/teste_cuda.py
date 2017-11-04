@@ -374,7 +374,7 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
             Si = perturb(S[0], S[1])
             fSi = f(Si[0], Si[1])
 
-            # showSolution(Si)
+            # show_solution(Si)
             # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
@@ -392,7 +392,7 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
                 fS = fSi
                 nSucesso = nSucesso + 1
 
-                # showSolution(S)
+                # show_solution(S)
                 # print("melhor S: " + str(S))
 
             i = i + 1
@@ -413,7 +413,7 @@ def simulated_annealing(x0, y0, M, P, L, T0, alpha):
             break
 
     ## saiu do loop principal
-    # showSolution(S)
+    # show_solution(S)
     # print("invocacoes de f(): " + str(contador_uso_func_objetivo))
     return S
 
@@ -719,7 +719,7 @@ if __name__ == '__main__':
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     showSolution(bestAP[0], bestAP[1])
-    # showSolution(1, 1)
+    # show_solution(1, 1)
 
     print("Melhor ponto sugerido pelo algoritmo: " + str(bestAP))
     input('FIM')

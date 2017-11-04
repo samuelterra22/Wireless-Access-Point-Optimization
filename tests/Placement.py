@@ -740,7 +740,7 @@ class Placement(object):
                 Si = self.perturb(S)
                 fSi = self.f(Si)
 
-                # self.showSolution(Si)
+                # self.show_solution(Si)
                 print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
 
                 # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
@@ -758,7 +758,7 @@ class Placement(object):
                     fS = fSi
                     nSucesso = nSucesso + 1
 
-                    # self.showSolution(S)
+                    # self.show_solution(S)
                     print("melhor S: " + str(S))
 
                 i = i + 1
@@ -779,7 +779,7 @@ class Placement(object):
                 break
 
         ## saiu do loop principal
-        # self.showSolution(S)
+        # self.show_solution(S)
         # print("invocacoes de self.f(): " + str(self.contador_uso_func_objetivo))
         return S
 

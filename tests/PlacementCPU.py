@@ -802,7 +802,7 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
 
             # contador_uso_func_objetivo += 1
 
-            # showSolution(Si)
+            # show_solution(Si)
             # print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S) + "\t Si: " + str(Si))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
@@ -820,7 +820,7 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
                 fS = fSi
                 nSucesso = nSucesso + 1
 
-                # showSolution(S)
+                # show_solution(S)
                 # print("melhor S: " + str(S))
 
             i = i + 1
@@ -841,7 +841,7 @@ def simulated_annealing(S0, M, P, L, T0, alpha):
             break
 
     ## saiu do loop principal
-    # showSolution(S)
+    # show_solution(S)
     # print("invocacoes de f(): " + str(contador_uso_func_objetivo))
     return S
 

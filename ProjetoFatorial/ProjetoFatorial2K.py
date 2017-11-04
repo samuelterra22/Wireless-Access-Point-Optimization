@@ -5,7 +5,8 @@
 
 from datetime import datetime
 
-from Placement import Placement
+from tests.Placement import Placement
+
 
 def p_f_2_k():
     # Vizinhos

@@ -628,7 +628,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
             fSi = avalia_array(Si_array, num_aps)
 
-            # showSolution(Si) print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array)
+            # show_solution(Si) print("[\t" + (str(round((100 - 100 * fSi / fS) * 100, 1))) + "\t] S: " + str(S_array)
             #  + "\t Si: " + str(Si_array))
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
@@ -646,7 +646,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
                 fS = fSi
                 nSucesso = nSucesso + 1
 
-                # showSolution(S)
+                # show_solution(S)
                 # print("melhor S: " + str(S))
 
             i = i + 1
@@ -667,7 +667,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             break
 
     ## saiu do loop principal
-    # showSolution(S)
+    # show_solution(S)
     # print("invocacoes de f(): " + str(contador_uso_func_objetivo))
 
     print("Distância da solução inicial:\t\t\t\t\t" + str(sobrepoe_solucoes_SUB(S_array, num_aps)))
@@ -913,7 +913,7 @@ def run():
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
     #
     showSolution(bestSolution, DISPLAYSURF)
-    # # showSolution(1, 1)
+    # # show_solution(1, 1)
     #
     input('\nFim de execução.')
 
