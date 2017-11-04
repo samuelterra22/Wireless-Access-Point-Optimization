@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-
+import cProfile
 import math
 import random as rd
 from math import sqrt, log10, exp
@@ -704,69 +704,8 @@ def get_color_gradient(steps=250):
     return cores
 
 
-########################################################################################################################
-#   Main                                                                                                               #
-########################################################################################################################
-if __name__ == '__main__':
-    COLORS = get_color_gradient(16)
 
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    RED = (255, 0, 0)
-    GREEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
-
-    # tamanho da matriz = dimensão da planta / precisão
-
-    escala = 1
-    # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float32)
-
-    floor_size = size_of_floor_plan(walls)
-    comprimento_planta = floor_size[0]
-    largura_planta = floor_size[1]
-    ## carreguei a planta so para obter a proporcao
-    proporcao_planta = comprimento_planta / largura_planta
-
-    # HEIGHT = int(largura_planta)
-    # WIDTH = int(comprimento_planta)
-    HEIGHT = 200
-    WIDTH = int(HEIGHT * proporcao_planta)
-
-    escala = HEIGHT / largura_planta
-    # escala = WIDTH / comprimento_planta
-    # precisao = 1  # metro
-    precisao = 36.0 / WIDTH
-
-    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
-    walls = read_walls_from_dxf("../DXFs/bloco-a-linhas-porta.dxf")
-    floor_plan = np.array(walls, dtype=np.float32)
-
-    ## Quantidade de APs
-    num_aps = 2
-
-    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
-    max_inter = 600 * num_aps
-
-    ## p
-    max_pertub = 5
-
-    # RAIO_PERTURBACAO = WIDTH * 0.01
-    RAIO_PERTURBACAO = WIDTH * 0.025
-
-    ## v
-    num_max_succ = 80
-
-    ## a
-    alpha = .85
-
-    ## t
-    temp_inicial = 300 * 2
-
-    ## máximo de iterações do S.A.
-    max_SA = 1
-
+def run():
     print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
     print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
     print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
@@ -774,6 +713,7 @@ if __name__ == '__main__':
     print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
     print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
+    print("Raio de perturbação:\t\t" + str(RAIO_PERTURBACAO) + "\n")
     print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
     print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
 
@@ -795,18 +735,119 @@ if __name__ == '__main__':
     #         maxFO = ap_array_fo
     #         bestSolution = ap_array
 
-    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    bestSolution_fo = objective_function(bestSolution)
+    # bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
+    # bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
 
-    # Inicia o PyGame
+    # x = 1230
+    # y = 360
+    # xx = (1610/864)*660
+    # yy = (600/435)*260
+
+    xx = 1175
+    yy = 360
+
+    bestSolution = [[xx, yy]]
+
+    # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+    #
+    # # Inicia o PyGame
     pygame.init()
-
-    # Configura o tamanho da janela
+    #
+    # # Configura o tamanho da janela
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
-
-    showSolution(bestSolution)
-    # showSolution(1, 1)
-
+    #
+    showSolution(bestSolution, DISPLAYSURF)
+    # # showSolution(1, 1)
+    #
     input('\nFim de execução.')
+
+
+########################################################################################################################
+#   Main                                                                                                               #
+########################################################################################################################
+if __name__ == '__main__':
+    COLORS = get_color_gradient(25)
+
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
+
+    Pt_dBm = -20
+
+    # tamanho da matriz = dimensão da planta / precisão
+
+    # dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
+    # dxf_path = "../DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
+
+    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
+    dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "../DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
+
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta_baixa_piso1.dxf"
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "../DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso3.dxf"
+
+    escala = 1
+    # walls = read_walls_from_dxf("./DXFs/bloco-A-l.dxf")
+    walls = read_walls_from_dxf(dxf_path)
+    floor_plan = np.array(walls, dtype=np.float32)
+
+    floor_size = size_of_floor_plan(walls)
+    comprimento_planta = floor_size[0]
+    largura_planta = floor_size[1]
+    ## carreguei a planta so para obter a proporcao
+    proporcao_planta = comprimento_planta / largura_planta
+
+    # HEIGHT = int(largura_planta)
+    # WIDTH = int(comprimento_planta)
+    HEIGHT = 600  # 40
+    WIDTH = int(HEIGHT * proporcao_planta)
+
+    escala = HEIGHT / largura_planta
+    # escala = WIDTH / comprimento_planta
+    # precisao = 1  # metro
+    precisao = 36.0 / WIDTH
+
+    # walls = read_walls_from_dxf("/home/samuel/PycharmProjects/TCC/DXFs/bloco-a-linhas-sem-porta.dxf")
+    walls = read_walls_from_dxf(dxf_path)
+    floor_plan = np.array(walls, dtype=np.float32)
+
+    SENSITIVITY = -90
+    DBM_MIN_VALUE = np.finfo(np.float32).min
+
+    ## Quantidade de APs
+    num_aps = 1
+
+    ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
+    max_inter = 600 * num_aps
+
+    ## p
+    max_pertub = 5
+
+    # RAIO_PERTURBACAO = WIDTH * 0.01
+    # RAIO_PERTURBACAO = WIDTH * 0.0175
+    RAIO_PERTURBACAO = WIDTH * 0.025
+
+    ## v
+    num_max_succ = 80
+
+    ## a
+    alpha = .85
+
+    ## t
+    temp_inicial = 300 * 2
+
+    ## máximo de iterações do S.A.
+    max_SA = 1
+
+    # run()
+    # profile.runctx('run()', globals(), locals(),'tese')
+    cProfile.run(statement='run()', filename='PlacementAPs.cprof')
+
+    ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
+    ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
+
+    # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    # https://julien.danjou.info/blog/2015/guide-to-python-profiling-cprofile-concrete-case-carbonara

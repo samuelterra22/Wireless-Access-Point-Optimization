@@ -39,11 +39,13 @@ def read_walls_from_dxf(dxf_path):
     # escala = 7
 
     xMin = -1
+
     yMin = -1
     for e in modelspace:
         if e.dxftype() == 'LINE' and e.dxf.layer == 'ARQ':
             if e.dxf.start[0] < xMin or xMin == -1:
                 xMin = e.dxf.start[0]
+
             if e.dxf.start[1] < yMin or yMin == -1:
                 yMin = e.dxf.start[1]
 
@@ -196,22 +198,38 @@ def calc_distance(x1, y1, x2, y2):
 
 
 @jit
-def log_distance(d0, d, gamma):
+def log_distance(d, gamma=3, d0=1, Pr_d0=-60, Pt=-17):
     """
-    Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
-    e do ganho das antenas transmissora e receptora.
-    Livro Comunicações em Fio - Pricipios e Práticas - Rappaport (páginas 91-92).
-    :param d0: Distância do ponto de referência d0.
-    :param d: Distância que desejo calcular a perda do sinal.
-    :param gamma: Valor da constante de propagação que difere para cada tipo de ambiente.
-    :return: Retorna um float representando a perda do sinal entre a distância d0 e d.
-    """
-    # return path_loss(d) + 10 * gamma * log10(d / d0)
-    return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+       Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
+       e do ganho das antenas transmissora e receptora.
+       Livro Comunicações em Fio - Pricipios e Práticas - Rappaport (páginas 91-92).
+       :param Pr_d0:
+       :param Pt:
+       :param d0: Distância do ponto de referência d0.
+       :param d: Distância que desejo calcular a perda do sinal.
+       :param gamma: Valor da constante de propagação que difere para cada tipo de ambiente.
+       :return: Retorna um float representando a perda do sinal entre a distância d0 e d.
+       """
 
-    ## TODO XXX voltar pra 17 dBm
-    # return -10  - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
-    # return 1  - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+    ## path_loss(d0) + 10 * gamma * log10(d / d0)
+    ## HAVIAMOS CODIFICADO ASSIM PARA ECONOMIZAR 1 SUBTRACAO e 1 VAR
+    # return 17 - (60 + 10 * gamma * log10(d / d0))  # igual está na tabela
+
+    ## REESCREVI FACILITAR A COMPREENSAO
+    # return   -( PL + 10 * gamma * log10(d / d0) )
+    # return 0 - (PL + 10 * gamma * log10(d / d0) )
+    # return   - (PL + 10 * gamma * log10(d / d0) )
+    # return   -PL   - 10 * gamma * log10(d / d0)
+    # return   -(Pt-Pr0)   - (10 * gamma * log10(d / d0))
+    # return   -Pt + Pr0   - (10 * gamma * log10(d / d0))
+    # return   Pr0  - 10 * gamma * log10(d / d0) - Pt
+    return (Pr_d0 - 10 * gamma * log10(d / d0)) - Pt
+
+
+@jit
+def log_distance_v2(d, gamma=3, d0=10, Pr_d0=-69, Pt=-20):
+    # return   -( PL + 10 * gamma * log10(d / d0) )
+    return (Pr_d0 - 10 * gamma * log10(d / d0)) - Pt
 
 
 @jit
@@ -220,30 +238,51 @@ def tree_par_log(x):
 
 
 @jit
+def two_par_logistic(x):
+    # https://en.wikipedia.org/wiki/Logistic_distribution#Related_distributions
+    return Pt_dBm - (-15.11596 * math.log10(x * 2.1642))
+
+
+@jit
+def four_par_log(x):
+    A = 79.500
+    B = -38
+    C = -100.000
+    D = 0.0
+    E = 0.005
+
+    # https://en.wikipedia.org/wiki/Shifted_log-logistic_distribution
+    return Pt_dBm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
+
+
+@jit
+def five_par_log(x):
+    A = 84.0
+    B = -48
+    C = -121.0
+    D = -5.0
+    E = 0.005
+    # https://en.wikipedia.org/wiki/Shifted_log-logistic_distribution
+    return Pt_dBm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
+
+
+@jit
 def propagation_model(x, y, apX, apY, floor_plan):
-    ## outra coisa: quando conseguir adaptar o SA para varios APs (ex.: 2 ou 3), acho que convem testar uma alteracao
-    # no propagation_model: zerarmos de acordo com a sensibilidade na propria matriz de propagacao ao inves de somente
-    # no showSolucao. Talvez o SA convirja mais rapido do que deixarmos os dBms inuteis
-
     d = calc_distance(x, y, apX, apY)
-
-    loss_in_wall = 0
 
     loss_in_wall = absorption_in_walls(apX, apY, x, y, floor_plan)
 
     if d == 0:
         d = 1
 
-    # value = log_distance(1, d, 3) - loss_in_wall
-    #
-    value = tree_par_log(d) - loss_in_wall
-    # value = loss_in_wall
-    # value = tree_par_log(d)
+    # value = log_distance(d, 3, 11, -72, -20) - loss_in_wall
+    # value = log_distance(d, 3, 1, -60, -17) - loss_in_wall
+    # value = log_distance(d, 3, 10, -69, -20) - loss_in_wall
+    # value = four_par_log(d) - loss_in_wall
+    value = five_par_log(d) - loss_in_wall
 
-    # Penaliza o valor se for menor que a sensibilidade da interface Wi-Fi
-
-    # return DBM_MIN_VALUE if value < SENSITIVITY else value
     return value
+
 
 @jit
 def objective_function(matrix):
@@ -283,6 +322,7 @@ def objective_function(matrix):
 def objective_function_kernel(matrix, soma):
     """
     Função objetivo para a avaliação da solução atual.
+    :param soma:
     :param matrix: Matriz a ser avaliada.
     :return: Retorna a soma de todos os elementos da metriz.
     """
@@ -296,6 +336,25 @@ def objective_function_kernel(matrix, soma):
     for x in range(startX, W, gridX):
         for y in range(startY, H, gridY):
             soma += matrix[x][y]
+
+
+def simulate_cpu(apX, apY, floor_plan):
+    """
+    Método responsável por realizar a simulação do ambiente de acordo com a posição do Access Point.
+    :param floor_plan:
+    :param apY:
+    :param apX:
+    :return: Retorna a matriz NxM contendo o resultado da simulação de acordo com o modelo de propagação.
+    """
+
+    matrix_results = np.zeros(shape=(WIDTH, HEIGHT))
+
+    for x in range(WIDTH):
+        for y in range(HEIGHT):
+            value = propagation_model(x, y, apX, apY, floor_plan)
+            matrix_results[x][y] = value
+
+    return matrix_results
 
 
 @cuda.jit
@@ -382,6 +441,7 @@ def get_point_in_circle(pointX, pointY, ray):
 
     return list([x, y])
 
+
 @jit
 def perturba_array(S_array, size):
     """
@@ -414,7 +474,6 @@ def perturba(S):
 
 @jit
 def avalia_array(S_array, size):
-
     matrizes_propagacao = []
     for i in range(size):
         matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
@@ -455,7 +514,6 @@ def sobrepoe_solucoes_SUB(propagation_array, size):
 
 @jit
 def sobrepoe_solucoes_DIV_dBm(propagation_array, size):
-
     # verificar se é veridico
     if size == 1:
         return propagation_array[0]
@@ -481,34 +539,42 @@ def simula_propagacao(pointX, pointY):
     :param pointY: Ponto para realizar a simulação.
     :return: Retorna um numero float representando o valor da situação atual.
     """
-    g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
 
-    blockDim = (48, 8)
-    gridDim = (32, 16)
+    if ENVIRONMENT == "GPU":
 
-    d_matrix = cuda.to_device(g_matrix)
+        g_matrix = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
 
-    simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
+        blockDim = (48, 8)
+        gridDim = (32, 16)
 
-    d_matrix.to_host()
+        d_matrix = cuda.to_device(g_matrix)
 
-    # ----------------------------------------------------------------------------
+        simulate_kernel[gridDim, blockDim](pointX, pointY, d_matrix, floor_plan)
 
-    # g_matrix = np.asmatrix(g_matrix, dtype=np.float32)
-    # g_soma = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
-    #
-    # d_matrix = cuda.to_device(g_matrix)
-    # d_soma = cuda.to_device(g_soma)
-    #
-    # objective_function_kernel[gridDim, blockDim](d_matrix, d_soma)
-    #
-    # d_matrix.to_host()
-    # d_soma.to_host()
-    #
-    # return abs(np.sum(g_soma))
-    # return objective_function(g_matrix)
+        d_matrix.to_host()
 
-    return g_matrix
+        # ----------------------------------------------------------------------------
+
+        # g_matrix = np.asmatrix(g_matrix, dtype=np.float32)
+        # g_soma = np.zeros(shape=(WIDTH, HEIGHT), dtype=np.float32)
+        #
+        # d_matrix = cuda.to_device(g_matrix)
+        # d_soma = cuda.to_device(g_soma)
+        #
+        # objective_function_kernel[gridDim, blockDim](d_matrix, d_soma)
+        #
+        # d_matrix.to_host()
+        # d_soma.to_host()
+        #
+        # return abs(np.sum(g_soma))
+        # return objective_function(g_matrix)
+
+        return g_matrix
+    elif ENVIRONMENT == "CPU":
+        return simulate_cpu(pointX, pointY, floor_plan)
+
+    else:
+        exit(-1)
 
 
 def simulated_annealing(size, M, P, L, T0, alpha):
@@ -617,9 +683,16 @@ def hex_to_rgb(hex):
     """
     # hex = str(hex).lstrip('#')
     # return tuple(int(hex[i:i + 2], 16) for i in (0, 2, 4))
+
     hex = str(hex).lstrip('#')
     lv = len(hex)
     return tuple(int(hex[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+
+    # corR = int(Color(hex).get_red() * 255)
+    # corG = int(Color(hex).get_green() * 255)
+    # corB = int(Color(hex).get_blue() * 255)
+    #
+    # return tuple([corR, corG, corB])
 
 
 def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
@@ -638,20 +711,24 @@ def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
 def print_pygame(matrix_results, access_points, DISPLAYSURF):
     """
     Método responsável por desenhar a simulação usando o PyGame.
+    :param DISPLAYSURF:
     :param matrix_results: Matriz float contendo os resultados da simulação.
-    :param access_point: Posição (x, y) do ponto de acesso.
+    :param access_points: Posição (x, y) do ponto de acesso.
     :return: None.
     """
-
-    matrix_max_value = matrix_results.max()
+    # matrix_max_value = matrix_results.max()
     # matrix_min_value = matrix_results.min()
 
+    # testes
+    matrix_max_value = -100
+    matrix_min_value = -10
+
     # Se utilizar a função min tradicionar, a penalização de DBM_MIN_VALUE irá interferir no range de cor
-    matrix_min_value = matrix_max_value
-    for x in range(WIDTH):
-        for y in range(HEIGHT):
-            if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
-                matrix_min_value = matrix_results[x][y]
+    # matrix_min_value = matrix_max_value
+    # for x in range(WIDTH):
+    #     for y in range(HEIGHT):
+    #         if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
+    #             matrix_min_value = matrix_results[x][y]
 
                 # print("Desenhando simulação com PyGame...")
 
@@ -674,6 +751,7 @@ def print_pygame(matrix_results, access_points, DISPLAYSURF):
 def draw_point(DISPLAYSURF, color, x, y):
     """
     Método responsável por desenhar um ponto usando o PyGame de acordo com a posição (x,y).
+    :param DISPLAYSURF:
     :param color: A cor que irá ser o ponto.
     :param x: Posição do ponto no eixo X.
     :param y: Posição do ponto no eixo Y.
@@ -746,14 +824,9 @@ def get_color_of_interval(min, max, x):
     :param x: Valor que está dentro do intervalo e que deseja saber sua cor.
     :return: Retorna uma tupla representando um cor no formato RGB.
     """
-    # SENSITIVITY = 3.1622776601683793319988935444327185337195551393252168e-9 # -85
-    # SENSITIVITY = 3.1622776601683793319988935444327185337195551393252168e-8 # -75
-    # SENSITIVITY = 1e-10 # -100
-    # SENSITIVITY = -85
-    # SENSITIVITY = -75
-    # SENSITIVITY = -100
-    if x < SENSITIVITY:
-        return hex_to_rgb("#000000")
+
+    # if x < SENSITIVITY:
+    #     return hex_to_rgb("#000000")
 
     percentage = get_percentage_of_range(min, max, x)
     color = get_value_in_list(percentage, COLORS)
@@ -779,8 +852,10 @@ def showSolution(S_array, DISPLAYSURF):
 
 def get_color_gradient(steps=250):
     cores = list(Color("red").range_to(Color("green"), steps))
+    # cores = list(Color("blue").range_to(Color("red"), steps))
     cores.pop(0)
     cores.pop(len(cores) - 1)
+
     return cores
 
 
@@ -792,9 +867,11 @@ def run():
     print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
     print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
-    print("Raio de perturbação:\t\t" + str(RAIO_PERTURBACAO) + "\n")
-    print("Simulando ambiente com :\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels\n")
-    print("Escala de simulação da planta:\t\t 1 px : " + str(escala) + " metros\n")
+
+    print("Raio de perturbação:\t\t\t\t" + str(RAIO_PERTURBACAO))
+    print("Simulando ambiente com :\t\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels")
+    print("Escala de simulação da planta:\t\t\t1 px : " + str(escala) + " metros")
+    print("Ambiente de simulação:\t\t\t\t" + str(ENVIRONMENT) + "\n")
 
     # variasSolucoes = []
     #
@@ -814,10 +891,20 @@ def run():
     #         maxFO = ap_array_fo
     #         bestSolution = ap_array
 
-    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
+    # bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
+    # bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
 
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+    # x = 1230
+    # y = 360
+    # xx = (1610/864)*660
+    # yy = (600/435)*260
+
+    xx = 1175
+    yy = 360
+
+    bestSolution = [[xx, yy]]
+
+    # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
     #
     # # Inicia o PyGame
     pygame.init()
@@ -842,6 +929,11 @@ if __name__ == '__main__':
     RED = (255, 0, 0)
     GREEN = (0, 255, 0)
     BLUE = (0, 0, 255)
+
+    Pt_dBm = -20
+
+    # ENVIRONMENT = "GPU"
+    ENVIRONMENT = "CPU"
 
     # tamanho da matriz = dimensão da planta / precisão
 
@@ -885,7 +977,7 @@ if __name__ == '__main__':
     DBM_MIN_VALUE = np.finfo(np.float32).min
 
     ## Quantidade de APs
-    num_aps = 2
+    num_aps = 1
 
     ## fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
     max_inter = 600 * num_aps
