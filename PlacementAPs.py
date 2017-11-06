@@ -22,9 +22,10 @@ Point Informado.
 
 
 @jit
-def read_walls_from_dxf(dxf_path):
+def read_walls_from_dxf(dxf_path, escala):
     """
     Método responsável por ler um arquivo DXF e filtrar pela camada ARQ as paredes do ambiente.
+    :param escala:
     :param dxf_path: Caminho do arquivo de entrada, sendo ele no formato DFX.
     :return: Retorna uma lista contendo em cada posição, uma lista de quatro elementos, sendo os dois primeiros
     referêntes ao ponto inicial da parede e os dois ultimo referênte ao ponto final da parede.
@@ -382,8 +383,7 @@ def simulate_cpu(apX, apY, matrix_results, floor_plan):
 
     for x in range(WIDTH):
         for y in range(HEIGHT):
-            value = propagation_model(x, y, apX, apY, floor_plan)
-            matrix_results[x][y] = value
+            matrix_results[x][y] = propagation_model(x, y, apX, apY, floor_plan)
 
     return matrix_results
 
@@ -657,6 +657,7 @@ def hex_to_rgb(hex):
     #
     # return tuple([corR, corG, corB])
 
+
 def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
     """
     Método responsável por desenhar uma linha reta usando o PyGame de acordo com a posição de dois pontos.
@@ -827,6 +828,10 @@ def get_color_gradient(steps=250):
 
 
 def run():
+    """
+    Método responsável por realizar a procura do melhor ponto utilizando o SA.
+    :return: None
+    """
     print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
     print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
     print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
@@ -858,20 +863,10 @@ def run():
     #         maxFO = ap_array_fo
     #         bestSolution = ap_array
 
-    # bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    # bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
-    #
-    # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+    bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
+    bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
 
-    # x = 1230
-    # y = 360
-    # xx = (1610/864)*660
-    # yy = (600/435)*260
-
-    xx = 1175
-    yy = 360
-
-    bestSolution = [[xx, yy]]
+    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
 
     # Inicia o PyGame
     pygame.init()
@@ -882,13 +877,43 @@ def run():
     show_solution(bestSolution, DISPLAYSURF)
     # show_solution(1, 1)
 
-    input('\nFim de execução.')
+    input('\nAperte ESC para fechar a simulação.')
+
+
+def test_propagation():
+    """
+    Método usado apenas para fim de testes com a simulação em pontos específicos.
+    :return: None.
+    """
+    test_AP_in_the_middle = [[int(WIDTH / 2), int(HEIGHT / 2)]]
+
+    # Inicia o PyGame
+    pygame.init()
+
+    # Configura o tamanho da janela
+    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+    #
+    show_solution(test_AP_in_the_middle, DISPLAYSURF)
+    # show_solution(1, 1)
+
+    input('\nAperte ESC para fechar a simulação.')
 
 
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
+
+    ##################################################
+    #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
+
+    # ENVIRONMENT = "GPU"
+    ENVIRONMENT = "CPU"
+
+    # Tamanho da simulação
+    TAMAMHO_SIMULACAO = 400
+
+    # Gradiente de cores da visualização gráfica
     COLORS = get_color_gradient(25)
 
     BLACK = (0, 0, 0)
@@ -897,12 +922,28 @@ if __name__ == '__main__':
     GREEN = (0, 255, 0)
     BLUE = (0, 0, 255)
 
+    ##################################################
+    #  CONFIGURAÇÕES DOS EQUIPAMENTOS
+
+    # Quantidade de APs
+    num_aps = 1
+
+    # Potência de transmissão de cada AP
     Pt_dBm = -20
 
-    # ENVIRONMENT = "GPU"
-    ENVIRONMENT = "CPU"
+    # Sensibilidade dos equipamentos receptores
+    SENSITIVITY = -90
+    DBM_MIN_VALUE = np.finfo(np.float32).min
 
-    # tamanho da matriz = dimensão da planta / precisão
+    ##################################################
+    #  CONFIGURAÇÕES DO AMBIENTE REAL
+
+    COMPRIMENTO_BLOCO_A = 48.0
+    COMPRIMENTO_BLOCO_B = 36.0
+    COMPRIMENTO_BLOCO_C = 51.0
+
+    COMPRIMENTO_EDIFICIO = COMPRIMENTO_BLOCO_B
+    # LARGURA_EDIFICIO = ???
 
     # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
     # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
@@ -910,40 +951,36 @@ if __name__ == '__main__':
     # dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
     dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
-
     # dxf_path = "./DXFs/bloco_c/sem_porta/bloco_C_planta_baixa_piso1.dxf"
     # dxf_path = "./DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "./DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso3.dxf"
 
-    escala = 1
-
-    walls = read_walls_from_dxf(dxf_path)
+    # carrega para saber o comprimento da planta
+    walls = read_walls_from_dxf(dxf_path, 1)
     floor_plan = np.array(walls, dtype=np.float32)
 
     floor_size = size_of_floor_plan(walls)
     comprimento_planta = floor_size[0]
     largura_planta = floor_size[1]
-    # carreguei a planta so para obter a proporcao
-    proporcao_planta = comprimento_planta / largura_planta
 
-    # HEIGHT = int(largura_planta)
-    # WIDTH = int(comprimento_planta)
-    HEIGHT = 600  # 40
-    WIDTH = int(HEIGHT * proporcao_planta)
+    WIDTH = TAMAMHO_SIMULACAO
+    HEIGHT = int(WIDTH * (largura_planta / comprimento_planta))
+    escala = WIDTH / comprimento_planta
+    precisao = COMPRIMENTO_EDIFICIO / WIDTH
 
-    escala = HEIGHT / largura_planta
-    # escala = WIDTH / comprimento_planta
-    # precisao = 1  # metro
-    precisao = 36.0 / WIDTH
+    # HEIGHT = TAMAMHO_SIMULACAO
+    # WIDTH = int(HEIGHT * (comprimento_planta / largura_planta))
+    # escala = HEIGHT / largura_planta
+    # precisao = LARGURA_EDIFICIO / WIDTH
 
-    walls = read_walls_from_dxf(dxf_path)
+    # RE-carrega utilizando a escala apropriada
+    walls = read_walls_from_dxf(dxf_path, escala)
     floor_plan = np.array(walls, dtype=np.float32)
 
-    SENSITIVITY = -90
-    DBM_MIN_VALUE = np.finfo(np.float32).min
+    ##################################################
 
-    # Quantidade de APs
-    num_aps = 1
+    ##################################################
+    #  CONFIGURAÇÕES DO OTIMIZADOR
 
     # fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
     max_inter = 600 * num_aps
@@ -966,8 +1003,11 @@ if __name__ == '__main__':
 
     # Máximo de iterações do S.A.
     max_SA = 1
+    ##################################################
 
-    run()
+    test_propagation()
+    # run()
+
     # profile.runctx('run()', globals(), locals(),'tese')
     # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
 
