@@ -682,24 +682,24 @@ def print_pygame(matrix_results, access_points, DISPLAYSURF):
     """
 
     matrix_max_value = matrix_results.max()
-    # matrix_min_value = matrix_results.min()
+    # #matrix_min_value = matrix_results.min()
 
-    # matrix_max_value = -100
-    # matrix_min_value = -10
+    # # Se utilizar a função min tradicional, a penalização de DBM_MIN_VALUE irá interferir no range de cor
+    # matrix_min_value = matrix_max_value
+    # for x in range(WIDTH):
+    #     for y in range(HEIGHT):
+    #         if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
+    #             matrix_min_value = matrix_results[x][y]
 
-    # Se utilizar a função min tradicionar, a penalização de DBM_MIN_VALUE irá interferir no range de cor
-    matrix_min_value = matrix_max_value
-    for x in range(WIDTH):
-        for y in range(HEIGHT):
-            if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
-                matrix_min_value = matrix_results[x][y]
+    # matrix_max_value = -30
+    matrix_min_value = -100
 
     # print("Desenhando simulação com PyGame...")
 
     # Lê os valores da matriz que contêm valores calculados e colore
     for x in range(WIDTH):
         for y in range(HEIGHT):
-            color = get_color_of_interval(matrix_min_value, matrix_max_value, matrix_results[x][y])
+            color = get_color_of_interval(matrix_results[x][y], matrix_max_value, matrix_min_value)
             draw_point(DISPLAYSURF, color, x, y)
 
     # Pinta de vermelho a posição dos Access Points
@@ -783,7 +783,7 @@ def get_value_in_list(percent, list):
     # return list[int(position - 1)]
 
 
-def get_color_of_interval(min, max, x):
+def get_color_of_interval(x, max=-30, min=-100):
     """
     Este método retorna uma cor de acordo com o valor que está entre o intervalo min-max. Em outras palavras,
     este método transforma um número em uma cor dentro de uma faixa informada.
@@ -793,8 +793,8 @@ def get_color_of_interval(min, max, x):
     :return: Retorna uma tupla representando um cor no formato RGB.
     """
 
-    # if x < SENSITIVITY:
-    #     return hex_to_rgb("#000000")
+    if PAINT_BLACK_BELOW_SENSITIVITY and x < SENSITIVITY:
+         return BLACK
 
     percentage = get_percentage_of_range(min, max, x)
     color = get_value_in_list(percentage, COLORS)
@@ -914,7 +914,7 @@ if __name__ == '__main__':
     TAMAMHO_SIMULACAO = 400
 
     # Gradiente de cores da visualização gráfica
-    COLORS = get_color_gradient(25)
+    COLORS = get_color_gradient(10)
 
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
@@ -933,6 +933,9 @@ if __name__ == '__main__':
 
     # Sensibilidade dos equipamentos receptores
     SENSITIVITY = -90
+    PAINT_BLACK_BELOW_SENSITIVITY = True
+    # PAINT_BLACK_BELOW_SENSITIVITY = False
+
     DBM_MIN_VALUE = np.finfo(np.float32).min
 
     ##################################################
