@@ -794,7 +794,7 @@ def get_color_of_interval(x, max=-30, min=-100):
     """
 
     if PAINT_BLACK_BELOW_SENSITIVITY and x < SENSITIVITY:
-         return BLACK
+        return BLACK
 
     percentage = get_percentage_of_range(min, max, x)
     color = get_value_in_list(percentage, COLORS)
@@ -868,6 +868,8 @@ def run():
 
     print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
 
+    generate_summary(bestSolution)
+
     # Inicia o PyGame
     pygame.init()
 
@@ -876,8 +878,6 @@ def run():
     #
     show_solution(bestSolution, DISPLAYSURF)
     # show_solution(1, 1)
-
-    input('\nAperte ESC para fechar a simulação.')
 
 
 def test_propagation():
@@ -896,19 +896,75 @@ def test_propagation():
     show_solution(test_AP_in_the_middle, DISPLAYSURF)
     # show_solution(1, 1)
 
-    input('\nAperte ESC para fechar a simulação.')
+def generate_summary(S_array):
+
+    length = len(S_array)
+
+    print("Numero de soluções:\t" + str(length))
+
+    for i in range(length):
+
+        print("\nAvaliando solução (" + str(i+1) + "/" + str(length) + ")\t\tPonto:\t(" + str(S_array[i][0]) + "," + str(S_array[i][1]) + ")")
+
+        matrix = simula_propagacao(S_array[i][0], S_array[i][1])
+
+        above_sensitivity = [value for line in matrix for value in line if value > SENSITIVITY]
+        between_sensitivity = [value for line in matrix for value in line if value == SENSITIVITY]
+        under_sensitivity = [value for line in matrix for value in line if value < SENSITIVITY]
+
+        total = WIDTH * HEIGHT
+
+        percent_cover_above_sensitivity = (len(above_sensitivity) / total) * 100
+        percent_cover_between_sensitivity = (len(between_sensitivity) / total) * 100
+        percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
+
+        print("\t" + str(round(percent_cover_above_sensitivity, 2)) + "%\tdos pontos estão acima da sensibilidade do AP.")
+        print("\t" + str(round(percent_cover_between_sensitivity, 2)) + "%\tdos pontos estão sob sensibilidade do AP.")
+        print("\t" + str(round(percent_cover_under_sensitivity, 2)) + "%\tdos pontos estão abaixo da sensibilidade do AP.")
+
+        faixa1 = faixa2 = faixa3 = faixa4 = faixa5 = 0
+
+        #   0 a -29 dBm -> faixa1
+        # -30 a -49 dBm -> faixa2
+        # -50 a -69 dBm -> faixa3
+        # -70 a -85 dBm -> faixa4
+        # -86 a -100 dBm -> faixa5
+
+        for line in matrix:
+            for value in line:
+
+                if value > 0 or value > -29:
+                    faixa1 += 1
+
+                elif -30 > value > -49:
+                    faixa2 += 1
+
+                elif -50 > value > -69:
+                    faixa3 += 1
+
+                elif -70 > value > -85:
+                    faixa4 += 1
+
+                elif value < -86 or value < -100:
+                    faixa5 += 1
+
+        print("\n\tFaixa\t\t\tNº Pontos")
+        print("\t< 0 ~ -29 dBm\t\t" + str(faixa1))
+        print("\t-30 ~ -49 dBm\t\t" + str(faixa2))
+        print("\t-50 ~ -69 dBm\t\t" + str(faixa3))
+        print("\t-70 ~ -85 dBm\t\t" + str(faixa4))
+        print("\t-86 ~ -100 dBm >\t" + str(faixa5))
 
 
 ########################################################################################################################
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
 
-    # ENVIRONMENT = "GPU"
-    ENVIRONMENT = "CPU"
+    ENVIRONMENT = "GPU"
+    # ENVIRONMENT = "CPU"
 
     # Tamanho da simulação
     TAMAMHO_SIMULACAO = 400
@@ -1008,8 +1064,12 @@ if __name__ == '__main__':
     max_SA = 1
     ##################################################
 
-    test_propagation()
-    # run()
+    # test_propagation()
+    run()
+
+    # generate_summary([[50, 50]])
+
+    input('\nAperte ESC para fechar a simulação.')
 
     # profile.runctx('run()', globals(), locals(),'tese')
     # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
