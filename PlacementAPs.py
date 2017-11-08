@@ -168,7 +168,7 @@ def absorption_in_walls(apX, apY, destinyX, destinyY, floor_plan):
 
     # parede de concredo, de 8 a 15 dB. Por conta da precisao em casas decimais do float32, é melhor pegar a ordem de
     # magnitude com o dBm do que tentar usar o valor exato com mW
-    dbm_absorvido_por_parede = 8
+    # dbm_absorvido_por_parede = 8 ## AGORA É UMA CONSTANTE GLOBAL
 
     return intersecoes_com_paredes * dbm_absorvido_por_parede
 
@@ -574,8 +574,8 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     S_array = np.empty([size, 2], np.float32)
 
     for i in range(size):
-        # S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
-        S_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
+        S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
+        # S_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
 
     S0 = S_array.copy()
     print("Solução inicial:\n" + str(S0))
@@ -604,6 +604,10 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
             fSi = avalia_array(Si_array, num_aps)
 
+            ## Cuidado pois fica demasiado lento o desempenho do SA
+            # if ANIMACAO_PASSO_A_PASSO:
+            # 	show_solution(S_array, DISPLAYSURF)
+
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
 
@@ -614,6 +618,12 @@ def simulated_annealing(size, M, P, L, T0, alpha):
                 S_array = Si_array
                 fS = fSi
                 nSucesso = nSucesso + 1
+
+                ## Cuidado pois fica demasiado lento o desempenho do SA
+                # if ANIMACAO_MELHORES_LOCAIS:
+                # 	show_solution(S_array, DISPLAYSURF)
+
+                print("FO: " + '{:.3e}'.format(float(fS)))
 
             i = i + 1
 
@@ -670,6 +680,11 @@ def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
     :return: None
     """
     pygame.draw.line(DISPLAYSURF, color, (x1, y1), (x2, y2))
+
+
+def print_pygame_pyOpenGL(matrix_results, access_points, DISPLAYSURF):
+    # pxarray = pygame.PixelArray (surface)
+    x = 0
 
 
 def print_pygame(matrix_results, access_points, DISPLAYSURF):
@@ -802,6 +817,19 @@ def get_color_of_interval(x, max=-30, min=-100):
     return color
 
 
+def show_solution_opengl(S_array):
+    # print("\nDesenhando resultado da simulação com PyOpenGL.")
+
+    matrizes_propagacao = []
+    for i in range(len(S_array)):
+        matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
+    # propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
+    propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
+
+    print_pygame(propagacao, S_array, DISPLAYSURF)
+    draw_floor_plan(walls, DISPLAYSURF)
+
+
 def show_solution(S_array, DISPLAYSURF):
     print("\nDesenhando resultado da simulação com PyGame.")
 
@@ -827,24 +855,23 @@ def get_color_gradient(steps=250):
     return cores
 
 
+def show_configs():
+    print("\nOtimização via Simulated Annealing com a seguinte configuração:" + "\n")
+    print("\tNúmeto máximo de iterações:\t\t\t" + str(max_inter))
+    print("\tNúmero máximo de pertubações por iteração:\t" + str(max_pertub))
+    print("\tNúmero máximo de sucessos por iteração:\t\t" + str(num_max_succ))
+    print("\tTemperatura inicial:\t\t\t\t" + str(temp_inicial))
+    print("\tDecaimento da teperatura com α=\t\t\t" + str(alpha))
+    print("\tRaio de perturbação:\t\t\t\t" + str(RAIO_PERTURBACAO))
+    print("\nHardware de simulação:\t\t\t\t" + str(ENVIRONMENT) + "\n")
+
+    print("\nSimulação do ambiente com a seguinte configuração:" + "\n")
+    print("\tQuantidade de soluções finais:\t\t" + str(max_SA))
+    print("\tSimulando ambiente com :\t\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels")
+    print("\tEscala de simulação da planta:\t\t\t1 px : " + str(1 / escala) + " metros")
+
+
 def run():
-    """
-    Método responsável por realizar a procura do melhor ponto utilizando o SA.
-    :return: None
-    """
-    print("\nIniciando simulação com simulated Annealing com a seguinte configuração:")
-    print("Númeto máximo de iterações:\t\t\t" + str(max_inter))
-    print("Número máximo de pertubações por iteração:\t" + str(max_pertub))
-    print("Número máximo de sucessos por iteração:\t\t" + str(num_max_succ))
-    print("Temperatura inicial:\t\t\t\t" + str(temp_inicial))
-    print("Decaimento da teperatura com α=\t\t\t" + str(alpha))
-    print("Repetições do Simulated Annealing:\t\t" + str(max_SA) + "\n")
-
-    print("Raio de perturbação:\t\t\t\t" + str(RAIO_PERTURBACAO))
-    print("Simulando ambiente com :\t\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels")
-    print("Escala de simulação da planta:\t\t\t1 px : " + str(escala) + " metros")
-    print("Ambiente de simulação:\t\t\t\t" + str(ENVIRONMENT) + "\n")
-
     # variasSolucoes = []
     #
     # for i in range(max_SA):
@@ -863,21 +890,25 @@ def run():
     #         maxFO = ap_array_fo
     #         bestSolution = ap_array
 
+    #    # Visualização dos dados
+    # # Inicia o PyGame e configura o tamanho da janela
+    #    pygame.init()
+    #    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+
     bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
     bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
 
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+    # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
+    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + '{:.3e}'.format(
+        float(bestSolution_fo)))
+
+    print("\nDesenhando resultado da simulação...")
+    show_solution(bestSolution, DISPLAYSURF)
+    # show_solution(1, 1)
 
     generate_summary(bestSolution)
 
-    # Inicia o PyGame
-    pygame.init()
-
-    # Configura o tamanho da janela
-    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-    #
-    show_solution(bestSolution, DISPLAYSURF)
-    # show_solution(1, 1)
+    input('\nAperte ESC para fechar a simulação.')
 
 
 def test_propagation():
@@ -896,15 +927,16 @@ def test_propagation():
     show_solution(test_AP_in_the_middle, DISPLAYSURF)
     # show_solution(1, 1)
 
-def generate_summary(S_array):
 
+def generate_summary(S_array):
     length = len(S_array)
 
     print("Numero de soluções:\t" + str(length))
 
     for i in range(length):
 
-        print("\nAvaliando solução (" + str(i+1) + "/" + str(length) + ")\t\tPonto:\t(" + str(S_array[i][0]) + "," + str(S_array[i][1]) + ")")
+        print("\nAvaliando solução (" + str(i + 1) + "/" + str(length) + ")\t\tPonto:\t(" + str(
+            S_array[i][0]) + "," + str(S_array[i][1]) + ")")
 
         matrix = simula_propagacao(S_array[i][0], S_array[i][1])
 
@@ -918,9 +950,11 @@ def generate_summary(S_array):
         percent_cover_between_sensitivity = (len(between_sensitivity) / total) * 100
         percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
 
-        print("\t" + str(round(percent_cover_above_sensitivity, 2)) + "%\tdos pontos estão acima da sensibilidade do AP.")
+        print(
+            "\t" + str(round(percent_cover_above_sensitivity, 2)) + "%\tdos pontos estão acima da sensibilidade do AP.")
         print("\t" + str(round(percent_cover_between_sensitivity, 2)) + "%\tdos pontos estão sob sensibilidade do AP.")
-        print("\t" + str(round(percent_cover_under_sensitivity, 2)) + "%\tdos pontos estão abaixo da sensibilidade do AP.")
+        print("\t" + str(
+            round(percent_cover_under_sensitivity, 2)) + "%\tdos pontos estão abaixo da sensibilidade do AP.")
 
         faixa1 = faixa2 = faixa3 = faixa4 = faixa5 = 0
 
@@ -960,18 +994,6 @@ def generate_summary(S_array):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    ##################################################
-    #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
-
-    ENVIRONMENT = "GPU"
-    # ENVIRONMENT = "CPU"
-
-    # Tamanho da simulação
-    TAMAMHO_SIMULACAO = 400
-
-    # Gradiente de cores da visualização gráfica
-    COLORS = get_color_gradient(10)
-
     BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
     RED = (255, 0, 0)
@@ -981,21 +1003,29 @@ if __name__ == '__main__':
     ##################################################
     #  CONFIGURAÇÕES DOS EQUIPAMENTOS
 
-    # Quantidade de APs
-    num_aps = 1
+    # OBS.: por conta da precisao de casas decimais do float
+    #        é melhor pegar a ordem de magnitude com o dBm do
+    #        que tentar usar o valor exato com mW
 
     # Potência de transmissão de cada AP
     Pt_dBm = -20
 
     # Sensibilidade dos equipamentos receptores
-    SENSITIVITY = -90
+    SENSITIVITY = -85
+
+    # Gradiente de cores da visualização gráfica
+    COLORS = get_color_gradient(16)  # 64, 32, 24, 16, 8
+
     PAINT_BLACK_BELOW_SENSITIVITY = True
     # PAINT_BLACK_BELOW_SENSITIVITY = False
 
     DBM_MIN_VALUE = np.finfo(np.float32).min
 
+    # parede de concredo, de 8 a 15 dB.
+    dbm_absorvido_por_parede = 8
+
     ##################################################
-    #  CONFIGURAÇÕES DO AMBIENTE REAL
+    #  CONFIGURAÇÕES DO AMBIENTE E PLANTA-BAIXA
 
     COMPRIMENTO_BLOCO_A = 48.0
     COMPRIMENTO_BLOCO_B = 36.0
@@ -1022,6 +1052,26 @@ if __name__ == '__main__':
     comprimento_planta = floor_size[0]
     largura_planta = floor_size[1]
 
+    ##################################################
+    #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
+
+    ENVIRONMENT = "GPU"
+    # ENVIRONMENT = "CPU"
+
+    # Tamanho da simulação
+    TAMAMHO_SIMULACAO = 400
+
+    # Ativa / Desativa a animação passo a passo da otimização
+    # ANIMACAO_PASSO_A_PASSO   = True
+    ANIMACAO_PASSO_A_PASSO = False
+
+    # ANIMACAO_MELHORES_LOCAIS = True
+    ANIMACAO_MELHORES_LOCAIS = False
+
+    # Quantidade de APs
+    num_aps = 2
+    ##################################################
+
     WIDTH = TAMAMHO_SIMULACAO
     HEIGHT = int(WIDTH * (largura_planta / comprimento_planta))
     escala = WIDTH / comprimento_planta
@@ -1035,37 +1085,57 @@ if __name__ == '__main__':
     # RE-carrega utilizando a escala apropriada
     walls = read_walls_from_dxf(dxf_path, escala)
     floor_plan = np.array(walls, dtype=np.float32)
-
     ##################################################
 
     ##################################################
     #  CONFIGURAÇÕES DO OTIMIZADOR
 
     # fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
-    max_inter = 600 * num_aps
+    # max_inter = 600 * (1 + num_aps)
+    max_inter = 600 * (10 * num_aps)
 
     # p - Máximo de perturbações
     max_pertub = 5
 
     # RAIO_PERTURBACAO = WIDTH * 0.01
     # RAIO_PERTURBACAO = WIDTH * 0.0175
-    RAIO_PERTURBACAO = WIDTH * 0.025
+    # RAIO_PERTURBACAO = WIDTH * 0.025
+    # RAIO_PERTURBACAO = WIDTH * 0.11
+    RAIO_PERTURBACAO = WIDTH * 0.025 * num_aps
 
     # v - Máximo de vizinhos
-    num_max_succ = 80
+    # num_max_succ = 80
+    num_max_succ = 80 * 10
 
     # a - Alpha
     alpha = .85
+    # alpha = .95
 
     # t - Temperatura
-    temp_inicial = 300 * 2
+    # temp_inicial = 300 * (1 + num_aps)
+    temp_inicial = 300 * (1 + num_aps) * 10
 
     # Máximo de iterações do S.A.
     max_SA = 1
     ##################################################
 
+    # Visualização dos dados
+    # Inicia o PyGame e configura o tamanho da janela
+    pygame.init()
+    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+
+    show_configs()
     # test_propagation()
     run()
+
+    # profile.runctx('run()', globals(), locals(),'tese')
+    # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
+
+    # python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
+    # cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
+
+    # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    # https://julien.danjou.info/blog/2015/guide-to-python-profiling-cprofile-concrete-case-carbonara
 
     # generate_summary([[50, 50]])
 
