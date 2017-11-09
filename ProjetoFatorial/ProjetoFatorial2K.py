@@ -9,17 +9,18 @@ from tests.Placement import Placement
 
 
 def p_f_2_k():
+
     # Vizinhos
-    A = [80, 160]
+    A = [80, 240]
 
     # Temperatura Inicial
     B = [300, 600]
 
-    # Fator de esfriamento
-    C = [.80, .85]
+    # Beta (aps * beta)
+    C = [1, 3]
 
-    # Pertubações
-    D = [5, 10]
+    # Alpha (média exponencial)
+    D = [7, 8]
 
     # Tabela verdade com as configurações das possibilidades. Os valores representam a posição dos vetores de
     # parametros.

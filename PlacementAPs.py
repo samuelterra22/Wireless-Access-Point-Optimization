@@ -287,11 +287,16 @@ def propagation_model(x, y, apX, apY, floor_plan):
     if d == 0:
         d = 1
 
-    # value = log_distance(d, 3, 11, -72, -20) - loss_in_wall
-    # value = log_distance(d, 3, 1, -60, -17) - loss_in_wall
-    # value = log_distance(d, 3, 10, -69, -20) - loss_in_wall
-    # value = four_par_log(d) - loss_in_wall
+    ## CUIDADO: um modelo de propagação pessimista prende o SA se a FO não for ajustada
+
+    # value = log_distance(d, 3, 11, -72, Pt_dBm) - loss_in_wall
+    # value = log_distance(d, 3,  1, -60, Pt_dBm) - loss_in_wall
+    # value = log_distance(d, 3, 10, -69, Pt_dBm) - loss_in_wall
     value = five_par_log(d) - loss_in_wall
+    # value = four_par_log(d) - loss_in_wall
+
+    ## TODO teste
+    # return dbm_to_mw(value)
 
     return value
 
@@ -314,7 +319,7 @@ def objective_function(matrix):
     # for line in matrix:
     #     for value in line:
     #         g += -1/value
-    #         # if value < minSensibilidade:
+    #         # if value < SENSITIVITY:
     #         #     g += -1
     #         # else:
     #         #     g += value
@@ -324,7 +329,30 @@ def objective_function(matrix):
     # return pow(10, x)
 
     # TODO: Penalizar os valores que estão abaixo da sensibilidade.
-    return abs(np.sum(matrix))
+    # fo = abs(np.sum(matrix))
+
+    ## acima da sensibilidade
+    fo = 0
+    for line in matrix:
+        for value in line:
+            if value >= SENSITIVITY:
+                fo += 1
+
+    coberturaPercent = (fo / TOTAL_PONTOS) * 100  ## porcentagem de cobertura
+    sombraPercent = 100 - coberturaPercent  ## porcentagem de sombra
+
+    # return coberturaPercent 					 ## maximiza a cobertura
+    # return (-1 * pow(sombraPercent,2))			 ## miminiza as sombras, penalizadas
+    # return pow(coberturaPercent,2)				 ## maximiza a cobertura, difereciando mais os bons resultados
+
+    # return ( 2*coberturaPercent - sombraPercent )
+
+    alpha = 7
+    return (alpha * coberturaPercent - (10-alpha) * sombraPercent)  # pesos 7 pra 3
+    #return (0.7 * coberturaPercent - 0.3 * sombraPercent)  # pesos 7 pra 3
+
+    ## TODO testing VALADAO
+    # return abs(np.sum(matrix))
 
     # sum_reduce = cuda.reduce(lambda a, b: a + b)
     # return sum_reduce(np.array([10 ** (x / 10.) for line in matrix for x in line]))
@@ -348,6 +376,11 @@ def objective_function_kernel(matrix, soma):
     for x in range(startX, W, gridX):
         for y in range(startY, H, gridY):
             soma += matrix[x][y]
+
+            #         if matrix[x][y] >= SENSITIVITY:
+            #             soma += 1
+
+            # soma = ((soma / TOTAL_PONTOS) * 100)
 
 
 @cuda.jit
@@ -460,11 +493,11 @@ def avalia_array(S_array, size):
     #
     # return fo_APs
 
-    # simplesmente guloso
-    # matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
+    # #simplesmente guloso VALADAO testing
+    matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
 
-    # penaliza APs muito proximos
-    matriz_sobreposta = sobrepoe_solucoes_DIV_dBm(matrizes_propagacao, size)
+    # #penaliza APs muito proximos (CUIDADO: junto com FO % de cobertura prender o SA)
+    # matriz_sobreposta = sobrepoe_solucoes_DIV_dBm(matrizes_propagacao, size)
 
     return objective_function(matriz_sobreposta), matrizes_propagacao
 
@@ -561,9 +594,9 @@ def simula_propagacao(pointX, pointY):
     else:
         exit(-1)
 
+
 @jit
 def objective_function_mW(array_matrix):
-
     matrix = sobrepoe_solucoes_MAX(array_matrix, len(array_matrix))
 
     sum = 0
@@ -589,9 +622,11 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     # cria Soluções iniciais com pontos aleatórios para os APs
     S_array = np.empty([size, 2], np.float32)
 
-    for i in range(size):
-        S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
-        # S_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
+    for i in range(size):  ## VALADAO testing
+        if (POSICAO_INICIAL_ALEATORIA):
+            S_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
+        else:
+            S_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
 
     S0 = S_array.copy()
     print("Solução inicial:\n" + str(S0))
@@ -607,6 +642,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     # Armazena a MELHOR solução encontrada
     BEST_S_array = S_array.copy()
     BEST_fS = fS
+    # BEST_matrix_FO = result[1]
 
     # Loop principal – Verifica se foram atendidas as condições de termino do algoritmo
     while True:
@@ -626,11 +662,11 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             # retorna a FO e suas matrizes
             result = avalia_array(Si_array, num_aps)
             fSi = result[0]
-            matrix_FO = result[1]
+            # matrix_FO = result[1]
 
             ## Cuidado pois fica demasiado lento o desempenho do SA
             # if ANIMACAO_PASSO_A_PASSO:
-            # 	show_solution(S_array, DISPLAYSURF)
+            #   show_solution(S_array, DISPLAYSURF)
 
             # Verificar se o retorno da função objetivo está correto. f(x) é a função objetivo
             deltaFi = fSi - fS
@@ -641,24 +677,36 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             if (deltaFi <= 0) or (exp(-deltaFi / T) > random()):
 
                 S_array = Si_array.copy()
-
                 fS = fSi
+
                 nSucesso = nSucesso + 1
+
+                ## Cuidado pois fica demasiado lento o desempenho do SA
+                # if ANIMACAO_MELHORES_LOCAIS:
+                #   show_solution(S_array, DISPLAYSURF)
 
                 if fS > BEST_fS:
                     BEST_fS = fS
                     BEST_S_array = S_array.copy()
-                    BEST_matrix_FO = matrix_FO
+                    # BEST_matrix_FO = matrix_FO
+                    # print("FO: " + '{:.5e}'.format(float(fS)) + " \t\t <<< BEST " + "\tTemp=" + str(
+                    #    int(T)) + "º" + "\tIter=" + str(j) + "/Suc=" + str(nSucesso))
 
-                ## Cuidado pois fica demasiado lento o desempenho do SA
-                # if ANIMACAO_MELHORES_LOCAIS:
-                # 	show_solution(S_array, DISPLAYSURF)
+                    if ANIMACAO_MELHORES:
+                        show_solution(S_array, DISPLAYSURF)
 
-                print("FO: " + '{:.3e}'.format(float(fS)))
+                ## DEBUG
+                # print("FO: " + '{:.5e}'.format(float(fS)) + " \t ... LOCAL")
 
-                FOs.append(objective_function_mW(matrix_FO))
+                # FOs.append( objective_function_mW(matrix_FO) )
+                # FOs.append( mw_to_dbm(objective_function_mW(matrix_FO)) )
+                FOs.append(fS)
 
             i = i + 1
+
+            ## DEBUG
+            # print("FO: " + '{:.5e}'.format(float(fS)) + " CANDIDATE")
+            # FOs.append( fSi )
 
             if (nSucesso >= L) or (i > P):
                 break
@@ -678,9 +726,16 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
     print("Distância da solução inicial:\t\t\t\t\t" + str(sobrepoe_solucoes_SUB(S_array, num_aps)))
 
-    FOs.append(objective_function_mW(BEST_matrix_FO))  ## AQUI
+    print("FO last cand:   " + '{:.3e}'.format(float(fSi)))
+    print("FO local best:  " + '{:.3e}'.format(float(fS)))
+    print("FO global best: " + '{:.3e}'.format(float(BEST_fS)))
+
+    # FOs.append( objective_function_mW(BEST_matrix_FO) )
+    # FOs.append( mw_to_dbm(objective_function_mW(BEST_matrix_FO)) )
+    FOs.append(BEST_fS)
 
     return BEST_S_array
+
 
 def hex_to_rgb(hex):
     """
@@ -865,7 +920,7 @@ def show_solution_opengl(S_array):
 
 
 def show_solution(S_array, DISPLAYSURF):
-    print("\nDesenhando resultado da simulação com PyGame.")
+    # print("\nDesenhando resultado da simulação com PyGame.")
 
     matrizes_propagacao = []
 
@@ -896,13 +951,22 @@ def show_configs():
     print("\tNúmero máximo de sucessos por iteração:\t\t" + str(num_max_succ))
     print("\tTemperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("\tDecaimento da teperatura com α=\t\t\t" + str(alpha))
-    print("\tRaio de perturbação:\t\t\t\t" + str(RAIO_PERTURBACAO))
-    print("\nHardware de simulação:\t\t\t\t" + str(ENVIRONMENT) + "\n")
+    print("\tRaio de perturbação:\t\t\t\t" + str(int(RAIO_PERTURBACAO)))
+
+    print("\tExecuções do otimziador: \t\t" + str(max_SA))
+    print("\nHardware de simulação:\t" + str(ENVIRONMENT) + "\n")
 
     print("\nSimulação do ambiente com a seguinte configuração:" + "\n")
-    print("\tQuantidade de soluções finais:\t\t" + str(max_SA))
-    print("\tSimulando ambiente com :\t\t\t" + str(WIDTH) + "x" + str(HEIGHT) + " pixels")
-    print("\tEscala de simulação da planta:\t\t\t1 px : " + str(1 / escala) + " metros")
+    print("\tSimulando ambiente com:  \t\t" + str(WIDTH) + " x " + str(HEIGHT) + " pixels")
+    print("\tEscala de simulação:     \t\t1 px : " + '{:.4f}'.format(float((1 / escala))) + " metros")
+
+    print("\tQuantidade de APs:       \t\t" + str(num_aps))
+    print("\tPotência de cada APs:    \t\t" + str(Pt_dBm) + " dBm")
+
+    if (POSICAO_INICIAL_ALEATORIA):
+        print("\tPosição inicial dos APs: \t\tALEATÓRIA")
+    else:
+        print("\tPosição inicial dos APs: \t\tCENTRALIZADA (W/2, H/2)")
 
 
 def run():
@@ -934,15 +998,16 @@ def run():
     bestSolution_fo = result[0]
 
     # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
-    print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + '{:.3e}'.format(
-        float(bestSolution_fo)))
+    # print("\nMelhor ponto sugerido pelo algoritmo: \n" + str(bestSolution) + "\n FO: " + '{:.3e}'.format(
+    #    float(bestSolution_fo)))
+
+    # Gera resumo da simulação
+    generate_summary(bestSolution)
 
     print("\nDesenhando resultado da simulação...")
     show_solution(bestSolution, DISPLAYSURF)
     # show_solution(1, 1)
 
-    # Gera resumo da simulação
-    generate_summary(bestSolution)
 
 def test_propagation():
     """
@@ -967,75 +1032,80 @@ def generate_summary(S_array):
     print("\n****** Gerando sumários dos resultados da simulação ******")
     print("Numero de soluções:\t" + str(length))
 
+    matrizes_propagacao = []
     for i in range(length):
+        matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
 
-        print("\nAvaliando solução (" + str(i + 1) + "/" + str(length) + ")\t\tPonto:\t(" + str(
-            S_array[i][0]) + "," + str(S_array[i][1]) + ")")
+    matrix = sobrepoe_solucoes_MAX(matrizes_propagacao, length)
 
-        matrix = simula_propagacao(S_array[i][0], S_array[i][1])
+    # for i in range(length):
 
-        above_sensitivity = [value for line in matrix for value in line if value > SENSITIVITY]
-        between_sensitivity = [value for line in matrix for value in line if value == SENSITIVITY]
-        under_sensitivity = [value for line in matrix for value in line if value < SENSITIVITY]
+    #     print("\nAvaliando solução (" + str(i + 1) + "/" + str(length) + ")\t\tPonto:\t(" + str(
+    #         S_array[i][0]) + "," + str(S_array[i][1]) + ")")
 
-        total = WIDTH * HEIGHT
+    #     matrix = simula_propagacao(S_array[i][0], S_array[i][1])
 
-        percent_cover_above_sensitivity = (len(above_sensitivity) / total) * 100
-        percent_cover_between_sensitivity = (len(between_sensitivity) / total) * 100
-        percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
 
-        print(
-            "\t" + str(round(percent_cover_above_sensitivity, 2)) + "%\tdos pontos estão acima da sensibilidade do AP.")
-        print("\t" + str(round(percent_cover_between_sensitivity, 2)) + "%\tdos pontos estão sob sensibilidade do AP.")
-        print("\t" + str(
-            round(percent_cover_under_sensitivity, 2)) + "%\tdos pontos estão abaixo da sensibilidade do AP.")
+    above_sensitivity = [value for line in matrix for value in line if value >= SENSITIVITY]
+    # between_sensitivity = [value for line in matrix for value in line if value == SENSITIVITY]
+    under_sensitivity = [value for line in matrix for value in line if value < SENSITIVITY]
 
-        faixa1 = faixa2 = faixa3 = faixa4 = faixa5 = 0
+    total = WIDTH * HEIGHT
 
-        #   0 a -29 dBm -> faixa1
-        # -30 a -49 dBm -> faixa2
-        # -50 a -69 dBm -> faixa3
-        # -70 a -85 dBm -> faixa4
-        # -86 a -100 dBm -> faixa5
+    percent_cover_above_sensitivity = (len(above_sensitivity) / total) * 100
+    # percent_cover_between_sensitivity = (len(between_sensitivity) / total) * 100
+    percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
 
-        for line in matrix:
-            for value in line:
+    print("COBERTURA DE SINAL WI-FI:")
+    print("\t" + '{:.2f}'.format(float(percent_cover_above_sensitivity)) + "%\t com boa cobertura (sinal forte)")
+    # print("\t" + str(round(percent_cover_between_sensitivity, 2)) + "%\tdos pontos estão sob sensibilidade do AP.")
+    print("\t" + '{:.2f}'.format(
+        float(percent_cover_under_sensitivity)) + "%\t de zonas de sombra (abaixo da sensibilidade)")
 
-                if value > 0 or value > -29:
-                    faixa1 += 1
+    faixa1 = faixa2 = faixa3 = faixa4 = faixa5 = 0
 
-                elif -30 > value > -49:
-                    faixa2 += 1
+    for line in matrix:
+        for value in line:
 
-                elif -50 > value > -69:
-                    faixa3 += 1
+            # if value >= -50:                    #excepcional
+            #     faixa1 += 1
+            # elif -50 > value >= -67:            #ótimo
+            #     faixa2 += 1
 
-                elif -70 > value > -85:
-                    faixa4 += 1
+            if value >= -67:  # ótimo
+                faixa2 += 1
 
-                elif value < -86 or value < -100:
-                    faixa5 += 1
+            elif -67 > value >= -77:  # bom
+                faixa3 += 1
 
-        percent_faixa1 = faixa1 / total * 100
-        percent_faixa2 = faixa2 / total * 100
-        percent_faixa3 = faixa3 / total * 100
-        percent_faixa4 = faixa4 / total * 100
-        percent_faixa5 = faixa5 / total * 100
+            elif -77 > value >= SENSITIVITY:  # ruim
+                faixa4 += 1
 
-        print("\n\tFaixa\t\t\tCobertura")
-        print("\t< 0 ~ -29 dBm\t\t" + str(round(percent_faixa1, 2)) + "%")
-        print("\t-30 ~ -49 dBm\t\t" + str(round(percent_faixa2, 2)) + "%")
-        print("\t-50 ~ -69 dBm\t\t" + str(round(percent_faixa3, 2)) + "%")
-        print("\t-70 ~ -85 dBm\t\t" + str(round(percent_faixa4, 2)) + "%")
-        print("\t-86 ~ -100 dBm >\t" + str(round(percent_faixa5, 2)) + "%")
+            elif value < SENSITIVITY:  # sem conectividade (zona de sombra)
+                faixa5 += 1
 
-    print("Gerando gráfico do comportamento da FO.")
+    total = faixa1 + faixa2 + faixa3 + faixa4 + faixa5  ## deveria ser igual a WIDTH * HEIGHT
+
+    # percent_faixa1 = faixa1 / total * 100
+    percent_faixa2 = faixa2 / total * 100
+    percent_faixa3 = faixa3 / total * 100
+    percent_faixa4 = faixa4 / total * 100
+    percent_faixa5 = faixa5 / total * 100
+
+    print("\n\tCobertura por FAIXAS de intensidade de sinal")
+    # print("\t EXCELENTE    \t" + '{:.1f}'.format(float(percent_faixa1)) + "%")
+    print("\t\tsinal Ótimo  \t" + '{:.1f}'.format(float(percent_faixa2)) + "%")
+    print("\t\tsinal Bom    \t" + '{:.1f}'.format(float(percent_faixa3)) + "%")
+    print("\t\tsinal Ruim   \t" + '{:.1f}'.format(float(percent_faixa4)) + "%")
+    # print("\t INSUFICIENTE \t" + '{:.1f}'.format(float(percent_faixa5)) + "%")
+
+    print("\n... gerando gráfico do comportamento da FO.")
 
     # Plota gráfico da função objetivo
     plt.plot(FOs)
-    plt.title("Comportamento da FO.")
-    plt.ylabel('Valor FO')
-    plt.xlabel('Quantidade de pontos')
+    plt.title("Comportamento do Simulated Annealing")
+    plt.ylabel('Valor da FO')
+    plt.xlabel('Solução candidata')
     plt.show()
 
 
@@ -1056,11 +1126,8 @@ if __name__ == '__main__':
     #        é melhor pegar a ordem de magnitude com o dBm do
     #        que tentar usar o valor exato com mW
 
-    # Potência de transmissão de cada AP
-    Pt_dBm = -20
-
     # Sensibilidade dos equipamentos receptores
-    SENSITIVITY = -85
+    SENSITIVITY = -90
 
     # Gradiente de cores da visualização gráfica
     COLORS = get_color_gradient(16)  # 64, 32, 24, 16, 8
@@ -1072,6 +1139,18 @@ if __name__ == '__main__':
 
     # parede de concredo, de 8 a 15 dB.
     dbm_absorvido_por_parede = 8
+
+    # Potência de transmissão de cada AP
+    # Pt_dBm = -14
+    # Pt_dBm = -17
+    # Pt_dBm = -20
+    Pt_dBm = -25
+    # Pt_dBm = -30
+
+    # Quantidade de APs
+    num_aps = 2
+
+    POSICAO_INICIAL_ALEATORIA = False
 
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE E PLANTA-BAIXA
@@ -1104,11 +1183,12 @@ if __name__ == '__main__':
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
 
-    ENVIRONMENT = "GPU"
-    # ENVIRONMENT = "CPU"
+    # ENVIRONMENT = "GPU"
+    ENVIRONMENT = "CPU"
 
     # Tamanho da simulação
     TAMAMHO_SIMULACAO = 400
+    # TAMAMHO_SIMULACAO = 600
 
     # Ativa / Desativa a animação passo a passo da otimização
     # ANIMACAO_PASSO_A_PASSO   = True
@@ -1117,8 +1197,8 @@ if __name__ == '__main__':
     # ANIMACAO_MELHORES_LOCAIS = True
     ANIMACAO_MELHORES_LOCAIS = False
 
-    # Quantidade de APs
-    num_aps = 2
+    # ANIMACAO_MELHORES = True
+    ANIMACAO_MELHORES = False
 
     ##################################################
 
@@ -1129,6 +1209,8 @@ if __name__ == '__main__':
     HEIGHT = int(WIDTH * (largura_planta / comprimento_planta))
     escala = WIDTH / comprimento_planta
     precisao = COMPRIMENTO_EDIFICIO / WIDTH
+
+    TOTAL_PONTOS = WIDTH * HEIGHT
 
     # HEIGHT = TAMAMHO_SIMULACAO
     # WIDTH = int(HEIGHT * (comprimento_planta / largura_planta))
@@ -1144,29 +1226,35 @@ if __name__ == '__main__':
     #  CONFIGURAÇÕES DO OTIMIZADOR
 
     # fixo, procurar uma fórmula para definir o max_iter em função do tamanho da matriz (W*H)
+    max_inter = 600
     # max_inter = 600 * (1 + num_aps)
-    max_inter = 600 * (10 * num_aps)
+    # max_inter = 600 * (10 * num_aps)
+    # max_inter = TOTAL_PONTOS * 0.2
 
     # p - Máximo de perturbações
     max_pertub = 5
 
-    # RAIO_PERTURBACAO = WIDTH * 0.01
+    # RAIO_PERTURBACAO = WIDTH * 0.0100
     # RAIO_PERTURBACAO = WIDTH * 0.0175
-    # RAIO_PERTURBACAO = WIDTH * 0.025
-    # RAIO_PERTURBACAO = WIDTH * 0.11
-    RAIO_PERTURBACAO = WIDTH * 0.025 * num_aps
+    # RAIO_PERTURBACAO = WIDTH * 0.0250
+    # RAIO_PERTURBACAO = WIDTH * 0.1100
+    beta = 1
+    RAIO_PERTURBACAO = (1 / precisao) * (beta + num_aps)  ## VALADAO testing
+    #RAIO_PERTURBACAO = (1 / precisao) * (1 + num_aps)  ## VALADAO testing
 
     # v - Máximo de vizinhos
     # num_max_succ = 80
-    num_max_succ = 80 * 10
+    # num_max_succ = 80 * 10
+    #num_max_succ = 80 * (beta + num_aps) * 3
+    num_max_succ = 240 * (beta + num_aps)
 
     # a - Alpha
     alpha = .85
     # alpha = .95
 
     # t - Temperatura
-    # temp_inicial = 300 * (1 + num_aps)
-    temp_inicial = 300 * (1 + num_aps) * 10
+    temp_inicial = 300 * (beta + num_aps)
+    # temp_inicial = 300 * (1 + num_aps) * 10
 
     # Máximo de iterações do S.A.
     max_SA = 1
@@ -1174,11 +1262,11 @@ if __name__ == '__main__':
 
     # Visualização dos dados
     # Inicia o PyGame e configura o tamanho da janela
-    pygame.init()
-    icon = pygame.image.load('images/icon.png')
-    pygame.display.set_icon(icon)
-    pygame.display.set_caption("Resultado Simulação - IFMG Campus Formiga")
-    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+    # pygame.init()
+    # icon = pygame.image.load('images/icon.png')
+    # pygame.display.set_icon(icon)
+    # pygame.display.set_caption("Resultado Simulação - IFMG Campus Formiga")
+    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     show_configs()
     # test_propagation()
@@ -1195,7 +1283,7 @@ if __name__ == '__main__':
 
     # generate_summary([[50, 50]])
 
-    input('\nAperte ESC para fechar a simulação.')
+    # input('\nAperte ESC para fechar a simulação.')
 
     # profile.runctx('run()', globals(), locals(),'tese')
     # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
