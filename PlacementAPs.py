@@ -4,12 +4,15 @@
 import math
 import profile
 import random as rd
-from math import sqrt, log10, exp
-from random import random
 
 import ezdxf
 import numpy as np
 import pygame
+import matplotlib.pyplot as plt
+
+from math import sqrt, log10, exp
+from random import random
+
 from colour import Color
 from numba import cuda, jit
 
@@ -625,6 +628,10 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
                 print("FO: " + '{:.3e}'.format(float(fS)))
 
+                FO_mW
+
+                FOs.append(fS)
+
             i = i + 1
 
             if (nSucesso >= L) or (i > P):
@@ -906,6 +913,7 @@ def run():
     show_solution(bestSolution, DISPLAYSURF)
     # show_solution(1, 1)
 
+    # Gera resumo da simulação
     generate_summary(bestSolution)
 
 def test_propagation():
@@ -993,6 +1001,15 @@ def generate_summary(S_array):
         print("\t-70 ~ -85 dBm\t\t" + str(round(percent_faixa4, 2)) + "%")
         print("\t-86 ~ -100 dBm >\t" + str(round(percent_faixa5, 2)) + "%")
 
+    print("Gerando gráfico do comportamento da FO.")
+
+    # Plota gráfico da função objetivo
+    plt.plot(FOs)
+    plt.title("Comportamento da FO.")
+    plt.ylabel('Valor FO')
+    plt.xlabel('Quantidade de pontos')
+    plt.show()
+
 
 ########################################################################################################################
 #   Main                                                                                                               #
@@ -1074,7 +1091,11 @@ if __name__ == '__main__':
 
     # Quantidade de APs
     num_aps = 2
+
     ##################################################
+
+    # Lista para guardar as funções objetivos calculadas durante a simulação
+    FOs = []
 
     WIDTH = TAMAMHO_SIMULACAO
     HEIGHT = int(WIDTH * (largura_planta / comprimento_planta))
@@ -1126,6 +1147,9 @@ if __name__ == '__main__':
     # Visualização dos dados
     # Inicia o PyGame e configura o tamanho da janela
     pygame.init()
+    icon = pygame.image.load('images/icon.png')
+    pygame.display.set_icon(icon)
+    pygame.display.set_caption("Resultado Simulação - IFMG Campus Formiga")
     DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     show_configs()
