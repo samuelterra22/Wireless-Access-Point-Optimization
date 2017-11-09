@@ -928,6 +928,7 @@ def test_propagation():
 def generate_summary(S_array):
     length = len(S_array)
 
+    print("\n****** Gerando sumários dos resultados da simulação ******")
     print("Numero de soluções:\t" + str(length))
 
     for i in range(length):
