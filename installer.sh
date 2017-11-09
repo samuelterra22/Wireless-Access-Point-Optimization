@@ -17,6 +17,7 @@ sudo apt-get install -y build-essential llvm libsdl1.2-dev libglew1.5-dev freegl
 sudo apt-get -y install python-pip && sudo -H pip install --upgrade pip
 sudo -H pip install ezdxf numpy numba matplotlib pygame colour datetime llvmpy pyprof2calltree
 sudo -H pip install tk || sudo apt install -y python-tk
+sudo apt install python3-tk
 
 ########################################################################################################################
 ## CUDA

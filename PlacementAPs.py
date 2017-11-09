@@ -466,7 +466,7 @@ def avalia_array(S_array, size):
     # penaliza APs muito proximos
     matriz_sobreposta = sobrepoe_solucoes_DIV_dBm(matrizes_propagacao, size)
 
-    return objective_function(matriz_sobreposta)
+    return objective_function(matriz_sobreposta), matrizes_propagacao
 
 
 @jit
@@ -561,6 +561,19 @@ def simula_propagacao(pointX, pointY):
     else:
         exit(-1)
 
+@jit
+def objective_function_mW(array_matrix):
+
+    matrix = sobrepoe_solucoes_MAX(array_matrix, len(array_matrix))
+
+    sum = 0
+
+    for line in matrix:
+        for value in line:
+            sum += dbm_to_mw(value)
+
+    return sum
+
 
 def simulated_annealing(size, M, P, L, T0, alpha):
     """
@@ -583,12 +596,17 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     S0 = S_array.copy()
     print("Solução inicial:\n" + str(S0))
 
-    fS = avalia_array(S_array, size)
+    result = avalia_array(S_array, size)
+    fS = result[0]
 
     T = T0
     j = 1
 
     i_ap = 0
+
+    # Armazena a MELHOR solução encontrada
+    BEST_S_array = S_array.copy()
+    BEST_fS = fS
 
     # Loop principal – Verifica se foram atendidas as condições de termino do algoritmo
     while True:
@@ -605,7 +623,10 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
             Si_array[i_ap] = perturba(S_array[i_ap])
 
-            fSi = avalia_array(Si_array, num_aps)
+            # retorna a FO e suas matrizes
+            result = avalia_array(Si_array, num_aps)
+            fSi = result[0]
+            matrix_FO = result[1]
 
             ## Cuidado pois fica demasiado lento o desempenho do SA
             # if ANIMACAO_PASSO_A_PASSO:
@@ -618,9 +639,16 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             # Maximização: deltaFi <= 0
             # Teste de aceitação de uma nova solução
             if (deltaFi <= 0) or (exp(-deltaFi / T) > random()):
-                S_array = Si_array
+
+                S_array = Si_array.copy()
+
                 fS = fSi
                 nSucesso = nSucesso + 1
+
+                if fS > BEST_fS:
+                    BEST_fS = fS
+                    BEST_S_array = S_array.copy()
+                    BEST_matrix_FO = matrix_FO
 
                 ## Cuidado pois fica demasiado lento o desempenho do SA
                 # if ANIMACAO_MELHORES_LOCAIS:
@@ -628,9 +656,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
                 print("FO: " + '{:.3e}'.format(float(fS)))
 
-                FO_mW
-
-                FOs.append(fS)
+                FOs.append(objective_function_mW(matrix_FO))
 
             i = i + 1
 
@@ -652,8 +678,9 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
     print("Distância da solução inicial:\t\t\t\t\t" + str(sobrepoe_solucoes_SUB(S_array, num_aps)))
 
-    return S_array
+    FOs.append(objective_function_mW(BEST_matrix_FO))  ## AQUI
 
+    return BEST_S_array
 
 def hex_to_rgb(hex):
     """
@@ -903,7 +930,8 @@ def run():
     #    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    bestSolution_fo = avalia_array(bestSolution, len(bestSolution))
+    result = avalia_array(bestSolution, len(bestSolution))
+    bestSolution_fo = result[0]
 
     # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
     print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + '{:.3e}'.format(
