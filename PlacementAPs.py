@@ -908,9 +908,6 @@ def run():
 
     generate_summary(bestSolution)
 
-    input('\nAperte ESC para fechar a simulação.')
-
-
 def test_propagation():
     """
     Método usado apenas para fim de testes com a simulação em pontos específicos.
@@ -982,12 +979,18 @@ def generate_summary(S_array):
                 elif value < -86 or value < -100:
                     faixa5 += 1
 
-        print("\n\tFaixa\t\t\tNº Pontos")
-        print("\t< 0 ~ -29 dBm\t\t" + str(faixa1))
-        print("\t-30 ~ -49 dBm\t\t" + str(faixa2))
-        print("\t-50 ~ -69 dBm\t\t" + str(faixa3))
-        print("\t-70 ~ -85 dBm\t\t" + str(faixa4))
-        print("\t-86 ~ -100 dBm >\t" + str(faixa5))
+        percent_faixa1 = faixa1 / total * 100
+        percent_faixa2 = faixa2 / total * 100
+        percent_faixa3 = faixa3 / total * 100
+        percent_faixa4 = faixa4 / total * 100
+        percent_faixa5 = faixa5 / total * 100
+
+        print("\n\tFaixa\t\t\tCobertura")
+        print("\t< 0 ~ -29 dBm\t\t" + str(round(percent_faixa1, 2)) + "%")
+        print("\t-30 ~ -49 dBm\t\t" + str(round(percent_faixa2, 2)) + "%")
+        print("\t-50 ~ -69 dBm\t\t" + str(round(percent_faixa3, 2)) + "%")
+        print("\t-70 ~ -85 dBm\t\t" + str(round(percent_faixa4, 2)) + "%")
+        print("\t-86 ~ -100 dBm >\t" + str(round(percent_faixa5, 2)) + "%")
 
 
 ########################################################################################################################
