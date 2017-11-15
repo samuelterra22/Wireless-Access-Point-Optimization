@@ -4,19 +4,20 @@
 import math
 import profile
 import random as rd
+import cProfile
 
 import ezdxf
 import numpy as np
 import pygame
 import matplotlib.pyplot as plt
 
+from datetime import datetime
+
 from math import sqrt, log10, exp
 from random import random
 
 from colour import Color
 from numba import cuda, jit
-
-import cProfile
 
 """
 Algoritmo que realiza a simulação da propagação do sinal wireless de determinado ambiente 2D de acordo com um Access
@@ -348,8 +349,8 @@ def objective_function(matrix):
     # return ( 2*coberturaPercent - sombraPercent )
 
     alpha = 7
-    return (alpha * coberturaPercent - (10-alpha) * sombraPercent)  # pesos 7 pra 3
-    #return (0.7 * coberturaPercent - 0.3 * sombraPercent)  # pesos 7 pra 3
+    return (alpha * coberturaPercent - (10 - alpha) * sombraPercent)  # pesos 7 pra 3
+    # return (0.7 * coberturaPercent - 0.3 * sombraPercent)  # pesos 7 pra 3
 
     ## TODO testing VALADAO
     # return abs(np.sum(matrix))
@@ -446,6 +447,13 @@ def get_point_in_circle(pointX, pointY, ray):
 
     x = round(abs(x[0]))
     y = round(abs(y[0]))
+
+    # Verifica se o valor estrapolou as dimensões da simulação
+    if x > WIDTH:
+        x = WIDTH
+
+    if y > HEIGHT:
+        y = HEIGHT
 
     return list([x, y])
 
@@ -930,6 +938,8 @@ def show_solution(S_array, DISPLAYSURF):
     # propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
     propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
 
+    # generate_summary(S_array)
+
     print_pygame(propagacao, S_array, DISPLAYSURF)
 
     draw_floor_plan(walls, DISPLAYSURF)
@@ -945,28 +955,28 @@ def get_color_gradient(steps=250):
 
 
 def show_configs():
-    print("\nOtimização via Simulated Annealing com a seguinte configuração:" + "\n")
-    print("\tNúmeto máximo de iterações:\t\t\t" + str(max_inter))
-    print("\tNúmero máximo de pertubações por iteração:\t" + str(max_pertub))
-    print("\tNúmero máximo de sucessos por iteração:\t\t" + str(num_max_succ))
+    print("\nOtimizacao via Simulated Annealing com a seguinte configuracao:" + "\n")
+    print("\tNumero maximo de iteracoes:\t\t\t" + str(max_inter))
+    print("\tNumero maximo de pertubacoes por iteracao:\t" + str(max_pertub))
+    print("\tNumero maximo de sucessos por iteracao:\t\t" + str(num_max_succ))
     print("\tTemperatura inicial:\t\t\t\t" + str(temp_inicial))
     print("\tDecaimento da teperatura com α=\t\t\t" + str(alpha))
-    print("\tRaio de perturbação:\t\t\t\t" + str(int(RAIO_PERTURBACAO)))
+    print("\tRaio de perturbacao:\t\t\t\t" + str(int(RAIO_PERTURBACAO)))
 
-    print("\tExecuções do otimziador: \t\t" + str(max_SA))
-    print("\nHardware de simulação:\t" + str(ENVIRONMENT) + "\n")
+    print("\tExecucoes do otimziador: \t\t" + str(max_SA))
+    print("\nHardware de simulacao:\t" + str(ENVIRONMENT) + "\n")
 
-    print("\nSimulação do ambiente com a seguinte configuração:" + "\n")
+    print("\nSimulacao do ambiente com a seguinte configuracao:" + "\n")
     print("\tSimulando ambiente com:  \t\t" + str(WIDTH) + " x " + str(HEIGHT) + " pixels")
-    print("\tEscala de simulação:     \t\t1 px : " + '{:.4f}'.format(float((1 / escala))) + " metros")
+    print("\tEscala de simulacao:     \t\t1 px : " + '{:.4f}'.format(float((1 / escala))) + " metros")
 
     print("\tQuantidade de APs:       \t\t" + str(num_aps))
-    print("\tPotência de cada APs:    \t\t" + str(Pt_dBm) + " dBm")
+    print("\tPotencia de cada APs:    \t\t" + str(Pt_dBm) + " dBm")
 
-    if (POSICAO_INICIAL_ALEATORIA):
-        print("\tPosição inicial dos APs: \t\tALEATÓRIA")
+    if POSICAO_INICIAL_ALEATORIA:
+        print("\tPosicao inicial dos APs: \t\tALEATORIA")
     else:
-        print("\tPosição inicial dos APs: \t\tCENTRALIZADA (W/2, H/2)")
+        print("\tPosicao inicial dos APs: \t\tCENTRALIZADA (W/2, H/2)")
 
 
 def run():
@@ -1005,7 +1015,8 @@ def run():
     generate_summary(bestSolution)
 
     print("\nDesenhando resultado da simulação...")
-    show_solution(bestSolution, DISPLAYSURF)
+    if ANIMACAO_PASSO_A_PASSO or ANIMACAO_MELHORES_LOCAIS or ANIMACAO_MELHORES:
+        show_solution(bestSolution, DISPLAYSURF)
     # show_solution(1, 1)
 
 
@@ -1016,21 +1027,22 @@ def test_propagation():
     """
     test_AP_in_the_middle = [[int(WIDTH / 2), int(HEIGHT / 2)]]
 
-    # Inicia o PyGame
-    pygame.init()
-
-    # Configura o tamanho da janela
-    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
     #
-    show_solution(test_AP_in_the_middle, DISPLAYSURF)
+    if ANIMACAO_PASSO_A_PASSO or ANIMACAO_MELHORES_LOCAIS or ANIMACAO_MELHORES:
+        # Inicia o PyGame
+        pygame.init()
+
+        # Configura o tamanho da janela
+        DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+        show_solution(test_AP_in_the_middle, DISPLAYSURF)
     # show_solution(1, 1)
 
 
 def generate_summary(S_array):
     length = len(S_array)
 
-    print("\n****** Gerando sumários dos resultados da simulação ******")
-    print("Numero de soluções:\t" + str(length))
+    print("\n****** Gerando sumarios dos resultados da simulacao ******")
+    print("Numero de APs:\t" + str(length))
 
     matrizes_propagacao = []
     for i in range(length):
@@ -1044,7 +1056,6 @@ def generate_summary(S_array):
     #         S_array[i][0]) + "," + str(S_array[i][1]) + ")")
 
     #     matrix = simula_propagacao(S_array[i][0], S_array[i][1])
-
 
     above_sensitivity = [value for line in matrix for value in line if value >= SENSITIVITY]
     # between_sensitivity = [value for line in matrix for value in line if value == SENSITIVITY]
@@ -1086,26 +1097,22 @@ def generate_summary(S_array):
 
     total = faixa1 + faixa2 + faixa3 + faixa4 + faixa5  ## deveria ser igual a WIDTH * HEIGHT
 
-    # percent_faixa1 = faixa1 / total * 100
     percent_faixa2 = faixa2 / total * 100
     percent_faixa3 = faixa3 / total * 100
     percent_faixa4 = faixa4 / total * 100
-    percent_faixa5 = faixa5 / total * 100
 
     print("\n\tCobertura por FAIXAS de intensidade de sinal")
-    # print("\t EXCELENTE    \t" + '{:.1f}'.format(float(percent_faixa1)) + "%")
-    print("\t\tsinal Ótimo  \t" + '{:.1f}'.format(float(percent_faixa2)) + "%")
+    print("\t\tsinal Otimo  \t" + '{:.1f}'.format(float(percent_faixa2)) + "%")
     print("\t\tsinal Bom    \t" + '{:.1f}'.format(float(percent_faixa3)) + "%")
     print("\t\tsinal Ruim   \t" + '{:.1f}'.format(float(percent_faixa4)) + "%")
-    # print("\t INSUFICIENTE \t" + '{:.1f}'.format(float(percent_faixa5)) + "%")
 
-    print("\n... gerando gráfico do comportamento da FO.")
+    print("\n... gerando grafico do comportamento da FO.")
 
     # Plota gráfico da função objetivo
     plt.plot(FOs)
     plt.title("Comportamento do Simulated Annealing")
     plt.ylabel('Valor da FO')
-    plt.xlabel('Solução candidata')
+    plt.xlabel('Solucao candidata')
     plt.show()
 
 
@@ -1113,11 +1120,11 @@ def generate_summary(S_array):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    RED = (255, 0, 0)
-    GREEN = (0, 255, 0)
-    BLUE = (0, 0, 255)
+    BLACK   = (0, 0, 0)
+    WHITE   = (255, 255, 255)
+    RED     = (255, 0, 0)
+    GREEN   = (0, 255, 0)
+    BLUE    = (0, 0, 255)
 
     ##################################################
     #  CONFIGURAÇÕES DOS EQUIPAMENTOS
@@ -1141,14 +1148,14 @@ if __name__ == '__main__':
     dbm_absorvido_por_parede = 8
 
     # Potência de transmissão de cada AP
-    # Pt_dBm = -14
+    Pt_dBm = -14
     # Pt_dBm = -17
     # Pt_dBm = -20
-    Pt_dBm = -25
+    # Pt_dBm = -25
     # Pt_dBm = -30
 
     # Quantidade de APs
-    num_aps = 2
+    num_aps = 3
 
     POSICAO_INICIAL_ALEATORIA = False
 
@@ -1183,12 +1190,12 @@ if __name__ == '__main__':
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
 
-    # ENVIRONMENT = "GPU"
-    ENVIRONMENT = "CPU"
+    ENVIRONMENT = "GPU"
+    # ENVIRONMENT = "CPU"
 
     # Tamanho da simulação
-    TAMAMHO_SIMULACAO = 400
-    # TAMAMHO_SIMULACAO = 600
+    # TAMAMHO_SIMULACAO = 400
+    TAMAMHO_SIMULACAO = 600
 
     # Ativa / Desativa a animação passo a passo da otimização
     # ANIMACAO_PASSO_A_PASSO   = True
@@ -1197,8 +1204,8 @@ if __name__ == '__main__':
     # ANIMACAO_MELHORES_LOCAIS = True
     ANIMACAO_MELHORES_LOCAIS = False
 
-    # ANIMACAO_MELHORES = True
-    ANIMACAO_MELHORES = False
+    ANIMACAO_MELHORES = True
+    # ANIMACAO_MELHORES = False
 
     ##################################################
 
@@ -1240,12 +1247,12 @@ if __name__ == '__main__':
     # RAIO_PERTURBACAO = WIDTH * 0.1100
     beta = 1
     RAIO_PERTURBACAO = (1 / precisao) * (beta + num_aps)  ## VALADAO testing
-    #RAIO_PERTURBACAO = (1 / precisao) * (1 + num_aps)  ## VALADAO testing
+    # RAIO_PERTURBACAO = (1 / precisao) * (1 + num_aps)  ## VALADAO testing
 
     # v - Máximo de vizinhos
     # num_max_succ = 80
     # num_max_succ = 80 * 10
-    #num_max_succ = 80 * (beta + num_aps) * 3
+    # num_max_succ = 80 * (beta + num_aps) * 3
     num_max_succ = 240 * (beta + num_aps)
 
     # a - Alpha
@@ -1262,15 +1269,26 @@ if __name__ == '__main__':
 
     # Visualização dos dados
     # Inicia o PyGame e configura o tamanho da janela
-    # pygame.init()
-    # icon = pygame.image.load('images/icon.png')
-    # pygame.display.set_icon(icon)
-    # pygame.display.set_caption("Resultado Simulação - IFMG Campus Formiga")
-    # DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+
+    # ANIMACAO_PASSO_A_PASSO   = True
+
+    # Só inicializa a janela do PyGame se alguma flag estiver ativa
+    if ANIMACAO_PASSO_A_PASSO or ANIMACAO_MELHORES_LOCAIS or ANIMACAO_MELHORES:
+        pygame.init()
+        icon = pygame.image.load('images/icon.png')
+        pygame.display.set_icon(icon)
+        pygame.display.set_caption("Resultado Simulação - IFMG Campus Formiga")
+        DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
     show_configs()
     # test_propagation()
     run()
+    #
+    # bestSolution = [
+    #     [WIDTH * 0.5, HEIGHT * 0.5]
+    # ]
+    #
+    # show_solution(bestSolution, DISPLAYSURF)
 
     # profile.runctx('run()', globals(), locals(),'tese')
     # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
@@ -1283,7 +1301,7 @@ if __name__ == '__main__':
 
     # generate_summary([[50, 50]])
 
-    # input('\nAperte ESC para fechar a simulação.')
+    input('\nAperte ESC para fechar a simulação.')
 
     # profile.runctx('run()', globals(), locals(),'tese')
     # cProfile.run(statement='run()', filename='PlacementAPs.cprof')
