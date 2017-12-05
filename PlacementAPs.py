@@ -16,6 +16,7 @@ from datetime import datetime
 from math import sqrt, log10, exp
 from random import random
 
+import sys
 from colour import Color
 from numba import cuda, jit
 
@@ -600,7 +601,8 @@ def simula_propagacao(pointX, pointY):
         #  with CPU Threads
         return simula_propagacao_cpu(pointX, pointY)
     else:
-        exit(-1)
+        # exit(-1)
+        sys.exit("(ERROR) Nenhum ambiente de execução bem definido.")
 
 
 @jit
@@ -1148,10 +1150,10 @@ if __name__ == '__main__':
     dbm_absorvido_por_parede = 8
 
     # Potência de transmissão de cada AP
-    Pt_dBm = -14
+    # Pt_dBm = -14
     # Pt_dBm = -17
     # Pt_dBm = -20
-    # Pt_dBm = -25
+    Pt_dBm = -25
     # Pt_dBm = -30
 
     # Quantidade de APs
