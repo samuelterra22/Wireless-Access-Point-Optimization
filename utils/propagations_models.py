@@ -44,13 +44,13 @@ def tree_par_log(x):
 
 
 @jit
-def two_par_logistic(Pt_dBm, x):
+def two_par_logistic(pt_dbm, x):
     # https://en.wikipedia.org/wiki/Logistic_distribution#Related_distributions
-    return Pt_dBm - (-15.11596 * math.log10(x * 2.1642))
+    return pt_dbm - (-15.11596 * math.log10(x * 2.1642))
 
 
 @jit
-def four_par_log(Pt_dBm, x):
+def four_par_log(pt_dbm, x):
     A = 79.500
     B = -38
     C = -100.000
@@ -58,15 +58,15 @@ def four_par_log(Pt_dBm, x):
     E = 0.005
 
     # https://en.wikipedia.org/wiki/Shifted_log-logistic_distribution
-    return Pt_dBm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
+    return pt_dbm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
 
 
 @jit
-def five_par_log(Pt_dBm, x):
+def five_par_log(pt_dbm, x):
     A = 84.0
     B = -48
     C = -121.0
     D = -5.0
     E = 0.005
     # https://en.wikipedia.org/wiki/Shifted_log-logistic_distribution
-    return Pt_dBm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
+    return pt_dbm - (D + (A - D) / (pow((1 + pow((x / C), B)), E)))
