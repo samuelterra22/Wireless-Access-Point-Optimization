@@ -35,9 +35,6 @@ def read_walls_from_dxf(dxf_path, escala):
 
     modelspace = dwg.modelspace()
 
-    # TODO 7 por que?
-    # escala = 7
-
     xMin = -1
     yMin = -1
     for e in modelspace:
@@ -122,13 +119,11 @@ def closed_segment_intersect(aX, aY, bX, bY, cX, cY, dX, dY):
     if (cX == dX) and (cY == dY):
         return (cX == aX and cY == aY) or (cX == bX and cY == bY)
 
-    # TODO ao inves de invocar a funcao side, colocar a formula aqui
     s1 = side(aX, aY, bX, bY, cX, cY)
     s2 = side(aX, aY, bX, bY, dX, dY)
 
     # All points are collinear
     if s1 == 0 and s2 == 0:
-        # TODO ao inves de invocar a funcao is_point_in_closed_segment, colocar a formula aqui
         return \
             is_point_in_closed_segment(aX, aY, bX, bY, cX, cY) or is_point_in_closed_segment(aX, aY, bX, bY, dX, dY) or \
             is_point_in_closed_segment(cX, cY, dX, dY, aX, aY) or is_point_in_closed_segment(cX, cY, dX, dY, bX, bY)
@@ -152,9 +147,6 @@ def absorption_in_walls(apX, apY, destinyX, destinyY, floor_plan):
     intersections = 0
 
     size = len(floor_plan)
-
-    # if size > 0:
-    #     intersections = 1000000000
 
     for i in range(size):
         # Coordenadas da parede
@@ -326,7 +318,7 @@ def objective_function(matrix):
     # TODO: Penalizar os valores que estão abaixo da sensibilidade.
     # fo = abs(np.sum(matrix))
 
-    ## acima da sensibilidade
+    # acima da sensibilidade
     fo = 0
     for line in matrix:
         for value in line:
@@ -346,7 +338,7 @@ def objective_function(matrix):
     return (alpha * coberturaPercent - (10 - alpha) * sombraPercent)  # pesos 7 pra 3
     # return (0.7 * coberturaPercent - 0.3 * sombraPercent)  # pesos 7 pra 3
 
-    ## TODO testing VALADAO
+    # TODO testing VALADAO
     # return abs(np.sum(matrix))
 
     # sum_reduce = cuda.reduce(lambda a, b: a + b)
@@ -422,7 +414,7 @@ def simulate_cpu(apX, apY, matrix_results, floor_plan):
 @jit
 def get_point_in_circle(pointX, pointY, ray):
     """
-    MÃ©todo por retorna um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
+    Método reponsavel por retornar um ponto ou conjunto de pontos dentro de um determinado raio de um ponto.
     :param pointY:
     :param pointX:
     :param ray: Valor do raio desejado.
@@ -487,13 +479,6 @@ def avalia_array(S_array, size):
     matrizes_propagacao = []
     for i in range(size):
         matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
-
-    # TODO: só pra testes, simples demais
-    # fo_APs = 0
-    # for i in range(size):
-    #     fo_APs += objective_function(matrizes_propagacao[i])
-    #
-    # return fo_APs
 
     # #simplesmente guloso VALADAO testing
     matriz_sobreposta = sobrepoe_solucoes_MAX(matrizes_propagacao, size)
@@ -667,7 +652,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
             fSi = result[0]
             # matrix_FO = result[1]
 
-            ## Cuidado pois fica demasiado lento o desempenho do SA
+            # Cuidado pois fica demasiado lento o desempenho do SA
             # if ANIMACAO_PASSO_A_PASSO:
             #   show_solution(S_array, DISPLAYSURF)
 
@@ -684,7 +669,7 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
                 nSucesso = nSucesso + 1
 
-                ## Cuidado pois fica demasiado lento o desempenho do SA
+                # Cuidado pois fica demasiado lento o desempenho do SA
                 # if ANIMACAO_MELHORES_LOCAIS:
                 #   show_solution(S_array, DISPLAYSURF)
 
@@ -698,18 +683,9 @@ def simulated_annealing(size, M, P, L, T0, alpha):
                     if ANIMACAO_MELHORES:
                         show_solution(S_array, DISPLAYSURF)
 
-                ## DEBUG
-                # print("FO: " + '{:.5e}'.format(float(fS)) + " \t ... LOCAL")
-
-                # FOs.append( objective_function_mW(matrix_FO) )
-                # FOs.append( mw_to_dbm(objective_function_mW(matrix_FO)) )
                 FOs.append(fS)
 
             i = i + 1
-
-            ## DEBUG
-            # print("FO: " + '{:.5e}'.format(float(fS)) + " CANDIDATE")
-            # FOs.append( fSi )
 
             if (nSucesso >= L) or (i > P):
                 break
@@ -722,10 +698,6 @@ def simulated_annealing(size, M, P, L, T0, alpha):
 
         if (nSucesso == 0) or (j > M):
             break
-
-    # saiu do loop principal
-    # show_solution(S)
-    # print("invocacoes de f(): " + str(contador_uso_func_objetivo))
 
     print("Distância da solução inicial:\t\t\t\t\t" + str(sobrepoe_solucoes_SUB(S_array, num_aps)))
 
@@ -774,11 +746,6 @@ def draw_line(DISPLAYSURF, x1, y1, x2, y2, color):
     pygame.draw.line(DISPLAYSURF, color, (x1, y1), (x2, y2))
 
 
-def print_pygame_pyOpenGL(matrix_results, access_points, DISPLAYSURF):
-    # pxarray = pygame.PixelArray (surface)
-    x = 0
-
-
 def print_pygame(matrix_results, access_points, DISPLAYSURF):
     """
     Método responsável por desenhar a simulação usando o PyGame.
@@ -789,19 +756,9 @@ def print_pygame(matrix_results, access_points, DISPLAYSURF):
     """
 
     matrix_max_value = matrix_results.max()
-    # #matrix_min_value = matrix_results.min()
-
-    # # Se utilizar a função min tradicional, a penalização de DBM_MIN_VALUE irá interferir no range de cor
-    # matrix_min_value = matrix_max_value
-    # for x in range(WIDTH):
-    #     for y in range(HEIGHT):
-    #         if matrix_results[x][y] != DBM_MIN_VALUE and matrix_results[x][y] < matrix_min_value:
-    #             matrix_min_value = matrix_results[x][y]
 
     # matrix_max_value = -30
     matrix_min_value = -100
-
-    # print("Desenhando simulação com PyGame...")
 
     # Lê os valores da matriz que contêm valores calculados e colore
     for x in range(WIDTH):
@@ -809,7 +766,7 @@ def print_pygame(matrix_results, access_points, DISPLAYSURF):
             color = get_color_of_interval(matrix_results[x][y], matrix_max_value, matrix_min_value)
             draw_point(DISPLAYSURF, color, x, y)
 
-    # Pinta de vermelho a posição dos Access Points
+    # Printa de vermelho a posição dos Access Points
     for ap in access_points:
         draw_point(DISPLAYSURF, RED, ap[0], ap[1])
 
@@ -855,7 +812,6 @@ def size_of_floor_plan(floor_plan):
 
 def draw_floor_plan(floor_plan, DISPLAYSURF):
     for line in floor_plan:
-        # draw_line(line[0]*escala, line[1]*escala, line[2]*escala, line[3]*escala, WHITE)
         draw_line(DISPLAYSURF, line[0], line[1], line[2], line[3], WHITE)
 
     # Atualiza a janela do PyGame para que exiba a imagem
@@ -887,7 +843,6 @@ def get_value_in_list(percent, list):
     elif position >= len(list):
         position = len(list)
     return hex_to_rgb(list[int(position - 1)])
-    # return list[int(position - 1)]
 
 
 def get_color_of_interval(x, max=-30, min=-100):
@@ -907,19 +862,6 @@ def get_color_of_interval(x, max=-30, min=-100):
     color = get_value_in_list(percentage, COLORS)
 
     return color
-
-
-def show_solution_opengl(S_array):
-    # print("\nDesenhando resultado da simulação com PyOpenGL.")
-
-    matrizes_propagacao = []
-    for i in range(len(S_array)):
-        matrizes_propagacao.append(simula_propagacao(S_array[i][0], S_array[i][1]))
-    # propagacao = sobrepoe_solucoes_ADD(matrizes_propagacao, len(S_array))
-    propagacao = sobrepoe_solucoes_MAX(matrizes_propagacao, len(S_array))
-
-    print_pygame(propagacao, S_array, DISPLAYSURF)
-    draw_floor_plan(walls, DISPLAYSURF)
 
 
 def show_solution(S_array, DISPLAYSURF):
@@ -942,7 +884,6 @@ def show_solution(S_array, DISPLAYSURF):
 
 def get_color_gradient(steps=250):
     cores = list(Color("red").range_to(Color("green"), steps))
-    # cores = list(Color("blue").range_to(Color("red"), steps))
     cores.pop(0)
     cores.pop(len(cores) - 1)
 
@@ -975,36 +916,8 @@ def show_configs():
 
 
 def run():
-    # variasSolucoes = []
-    #
-    # for i in range(max_SA):
-    #     print("Calculando o melhor ponto [" + str(i) + "]")
-    #     variasSolucoes.append(
-    #         simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha))
-    #
-    # maxFO = 0
-    # bestSolution = variasSolucoes[0]
-    #
-    # print("Analizando a melhor solução.")
-    #
-    # for ap_array in variasSolucoes:
-    #     ap_array_fo = avalia_array(ap_array)
-    #     if ap_array_fo > maxFO:
-    #         maxFO = ap_array_fo
-    #         bestSolution = ap_array
-
-    #    # Visualização dos dados
-    # # Inicia o PyGame e configura o tamanho da janela
-    #    pygame.init()
-    #    DISPLAYSURF = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-
     bestSolution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_succ, temp_inicial, alpha)
-    result = avalia_array(bestSolution, len(bestSolution))
-    bestSolution_fo = result[0]
-
-    # print("\nMelhor ponto sugerido pelo algoritmo: " + str(bestSolution) + "\n FO: " + str(bestSolution_fo))
-    # print("\nMelhor ponto sugerido pelo algoritmo: \n" + str(bestSolution) + "\n FO: " + '{:.3e}'.format(
-    #    float(bestSolution_fo)))
+    avalia_array(bestSolution, len(bestSolution))
 
     # Gera resumo da simulação
     generate_summary(bestSolution)
@@ -1012,7 +925,6 @@ def run():
     print("\nDesenhando resultado da simulação...")
     if ANIMACAO_PASSO_A_PASSO or ANIMACAO_MELHORES_LOCAIS or ANIMACAO_MELHORES:
         show_solution(bestSolution, DISPLAYSURF)
-    # show_solution(1, 1)
 
 
 def test_propagation():
@@ -1045,61 +957,45 @@ def generate_summary(S_array):
 
     matrix = sobrepoe_solucoes_MAX(matrizes_propagacao, length)
 
-    # for i in range(length):
-
-    #     print("\nAvaliando solução (" + str(i + 1) + "/" + str(length) + ")\t\tPonto:\t(" + str(
-    #         S_array[i][0]) + "," + str(S_array[i][1]) + ")")
-
-    #     matrix = simula_propagacao(S_array[i][0], S_array[i][1])
-
     above_sensitivity = [value for line in matrix for value in line if value >= SENSITIVITY]
-    # between_sensitivity = [value for line in matrix for value in line if value == SENSITIVITY]
     under_sensitivity = [value for line in matrix for value in line if value < SENSITIVITY]
 
     total = WIDTH * HEIGHT
 
     percent_cover_above_sensitivity = (len(above_sensitivity) / total) * 100
-    # percent_cover_between_sensitivity = (len(between_sensitivity) / total) * 100
     percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
 
     print("COBERTURA DE SINAL WI-FI:")
     print("\t" + '{:.2f}'.format(float(percent_cover_above_sensitivity)) + "%\t com boa cobertura (sinal forte)")
-    # print("\t" + str(round(percent_cover_between_sensitivity, 2)) + "%\tdos pontos estão sob sensibilidade do AP.")
     print("\t" + '{:.2f}'.format(
         float(percent_cover_under_sensitivity)) + "%\t de zonas de sombra (abaixo da sensibilidade)")
 
-    faixa1 = faixa2 = faixa3 = faixa4 = faixa5 = 0
+    faixa1 = faixa2 = faixa3 = faixa4 = 0
 
     for line in matrix:
         for value in line:
-
-            # if value >= -50:                    #excepcional
-            #     faixa1 += 1
-            # elif -50 > value >= -67:            #ótimo
-            #     faixa2 += 1
-
             if value >= -67:  # ótimo
-                faixa2 += 1
+                faixa1 += 1
 
             elif -67 > value >= -77:  # bom
-                faixa3 += 1
+                faixa2 += 1
 
             elif -77 > value >= SENSITIVITY:  # ruim
-                faixa4 += 1
+                faixa3 += 1
 
             elif value < SENSITIVITY:  # sem conectividade (zona de sombra)
-                faixa5 += 1
+                faixa4 += 1
 
-    total = faixa1 + faixa2 + faixa3 + faixa4 + faixa5  ## deveria ser igual a WIDTH * HEIGHT
+    total = faixa1 + faixa2 + faixa3 + faixa4  # deveria ser igual a WIDTH * HEIGHT
 
+    percent_faixa1 = faixa1 / total * 100
     percent_faixa2 = faixa2 / total * 100
     percent_faixa3 = faixa3 / total * 100
-    percent_faixa4 = faixa4 / total * 100
 
     print("\n\tCobertura por FAIXAS de intensidade de sinal")
-    print("\t\tsinal Otimo  \t" + '{:.1f}'.format(float(percent_faixa2)) + "%")
-    print("\t\tsinal Bom    \t" + '{:.1f}'.format(float(percent_faixa3)) + "%")
-    print("\t\tsinal Ruim   \t" + '{:.1f}'.format(float(percent_faixa4)) + "%")
+    print("\t\tsinal Otimo  \t" + '{:.1f}'.format(float(percent_faixa1)) + "%")
+    print("\t\tsinal Bom    \t" + '{:.1f}'.format(float(percent_faixa2)) + "%")
+    print("\t\tsinal Ruim   \t" + '{:.1f}'.format(float(percent_faixa3)) + "%")
 
     print("\n... gerando grafico do comportamento da FO.")
 
