@@ -4,7 +4,7 @@ from numba import jit
 
 
 @jit
-def log_distance(d, gamma=3, d0=1, Pr_d0=-60, Pt=-17):
+def log_distance_model(d, gamma=3, d0=1, Pr_d0=-60, Pt=-17):
     """
        Modelo logaritmo de perda baseado em resultados experimentais. Independe da frequência do sinal transmitido
        e do ganho das antenas transmissora e receptora.
@@ -33,24 +33,24 @@ def log_distance(d, gamma=3, d0=1, Pr_d0=-60, Pt=-17):
 
 
 @jit
-def log_distance_v2(d, gamma=3, d0=10, Pr_d0=-69, Pt=-20):
+def log_distance_v2_model(d, gamma=3, d0=10, Pr_d0=-69, Pt=-20):
     # return   -( PL + 10 * gamma * log10(d / d0) )
     return (Pr_d0 - 10 * gamma * log10(d / d0)) - Pt
 
 
 @jit
-def tree_par_log(x):
+def tree_par_log_model(x):
     return -17.74321 - 15.11596 * math.log(x + 2.1642)
 
 
 @jit
-def two_par_logistic(pt_dbm, x):
+def two_par_logistic_model(pt_dbm, x):
     # https://en.wikipedia.org/wiki/Logistic_distribution#Related_distributions
     return pt_dbm - (-15.11596 * math.log10(x * 2.1642))
 
 
 @jit
-def four_par_log(pt_dbm, x):
+def four_par_log_model(pt_dbm, x):
     A = 79.500
     B = -38
     C = -100.000
@@ -62,7 +62,7 @@ def four_par_log(pt_dbm, x):
 
 
 @jit
-def five_par_log(pt_dbm, x):
+def five_par_log_model(pt_dbm, x):
     A = 84.0
     B = -48
     C = -121.0

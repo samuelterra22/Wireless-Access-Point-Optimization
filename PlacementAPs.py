@@ -13,7 +13,7 @@ from colour import Color
 from math import sqrt, log10, exp
 from numba import cuda, jit
 
-from utils.propagations_models import five_par_log
+from utils.propagations_models import five_par_log_model
 
 """
 Algoritmo que realiza a simulação da propagação do sinal wireless de determinado ambiente 2D de acordo com um Access
@@ -215,7 +215,7 @@ def propagation_model(x, y, ap_x, ap_y, floor_plan_model):
     # value = log_distance(d, 3, 11, -72, pt_dbm) - loss_in_wall
     # value = log_distance(d, 3,  1, -60, pt_dbm) - loss_in_wall
     # value = log_distance(d, 3, 10, -69, pt_dbm) - loss_in_wall
-    value = five_par_log(pt_dbm, d) - loss_in_wall
+    value = five_par_log_model(pt_dbm, d) - loss_in_wall
     # value = four_par_log(pt_dbm, d) - loss_in_wall
 
     # TODO teste
@@ -260,7 +260,7 @@ def objective_function(matrix):
             if value >= SENSITIVITY:
                 fo += 1
 
-    coverage_percent = (fo / TOTAL_PONTOS) * 100  # porcentagem de cobertura
+    coverage_percent = (fo / TOTAL_OF_POINTS) * 100  # porcentagem de cobertura
     shadow_percent = 100 - coverage_percent  # porcentagem de sombra
 
     # return coverage_percent 					 ## maximiza a cobertura
@@ -302,7 +302,7 @@ def objective_function_kernel(matrix, soma):
             #         if matrix[x][y] >= SENSITIVITY:
             #             soma += 1
 
-            # soma = ((soma / TOTAL_PONTOS) * 100)
+            # soma = ((soma / TOTAL_OF_POINTS) * 100)
 
 
 @cuda.jit
@@ -788,7 +788,6 @@ def get_color_of_interval(x, max_value=-30, min_value=-100):
 
 
 def show_solution(s_array, py_game_display_surf_value):
-    # print("\nDesenhando resultado da simulação com PyGame.")
 
     propagation_matrices = []
 
@@ -815,7 +814,7 @@ def get_color_gradient(steps=250):
 def show_configs():
     print("\nOtimizacao via Simulated Annealing com a seguinte configuracao:" + "\n")
     print("\tNumero maximo de iteracoes:\t\t\t" + str(max_inter))
-    print("\tNumero maximo de pertubacoes por iteracao:\t" + str(max_pertub))
+    print("\tNumero maximo de pertubacoes por iteracao:\t" + str(max_disturbances))
     print("\tNumero maximo de sucessos por iteracao:\t\t" + str(num_max_success))
     print("\tTemperatura inicial:\t\t\t\t" + str(initial_temperature))
     print("\tDecaimento da teperatura com α=\t\t\t" + str(alpha))
@@ -838,7 +837,8 @@ def show_configs():
 
 
 def run():
-    best_solution = simulated_annealing(num_aps, max_inter, max_pertub, num_max_success, initial_temperature, alpha)
+    best_solution = simulated_annealing(num_aps, max_inter, max_disturbances, num_max_success, initial_temperature,
+                                        alpha)
     evaluate_array(best_solution, len(best_solution))
 
     # Gera resumo da simulação
@@ -858,10 +858,10 @@ def test_propagation():
 
     #
     if ANIMATION_STEP_BY_STEP or ANIMATION_BEST_PLACES or ANIMATION_BESTS:
-        # Inicia o PyGame
+        # Initialize PyGame
         pygame.init()
 
-        # Configura o tamanho da janela
+        # Set window size
         py_game_display_surf_value = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
         show_solution(test_ap_in_the_middle, py_game_display_surf_value)
 
@@ -974,11 +974,11 @@ if __name__ == '__main__':
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE E PLANTA-BAIXA
 
-    COMPRIMENTO_BLOCO_A = 48.0
-    COMPRIMENTO_BLOCO_B = 36.0
-    COMPRIMENTO_BLOCO_C = 51.0
+    LENGTH_BLOCK_A = 48.0
+    LENGTH_BLOCK_B = 36.0
+    LENGTH_BLOCK_C = 51.0
 
-    COMPRIMENTO_EDIFICIO = COMPRIMENTO_BLOCO_B
+    LENGTH_BUILDING = LENGTH_BLOCK_B
     # LARGURA_EDIFICIO = ???
 
     # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
@@ -996,8 +996,8 @@ if __name__ == '__main__':
     floor_plan = np.array(walls, dtype=np.float32)
 
     floor_size = size_of_floor_plan(walls)
-    comprimento_planta = floor_size[0]
-    largura_planta = floor_size[1]
+    floor_plan_length = floor_size[0]
+    floor_plan_width = floor_size[1]
 
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE SIMULADO
@@ -1006,8 +1006,8 @@ if __name__ == '__main__':
     # ENVIRONMENT = "CPU"
 
     # Tamanho da simulação
-    # TAMAMHO_SIMULACAO = 400
-    TAMAMHO_SIMULACAO = 600
+    # SIMULATION_SIZE = 400
+    SIMULATION_SIZE = 600
 
     # Ativa / Desativa a animação passo a passo da otimização
     # ANIMATION_STEP_BY_STEP   = True
@@ -1024,16 +1024,16 @@ if __name__ == '__main__':
     # Lista para guardar as funções objetivos calculadas durante a simulação
     FOs = []
 
-    WIDTH = TAMAMHO_SIMULACAO
-    HEIGHT = int(WIDTH * (largura_planta / comprimento_planta))
-    scale = WIDTH / comprimento_planta
-    precision = COMPRIMENTO_EDIFICIO / WIDTH
+    WIDTH = SIMULATION_SIZE
+    HEIGHT = int(WIDTH * (floor_plan_width / floor_plan_length))
+    scale = WIDTH / floor_plan_length
+    precision = LENGTH_BUILDING / WIDTH
 
-    TOTAL_PONTOS = WIDTH * HEIGHT
+    TOTAL_OF_POINTS = WIDTH * HEIGHT
 
-    # HEIGHT = TAMAMHO_SIMULACAO
-    # WIDTH = int(HEIGHT * (comprimento_planta / largura_planta))
-    # scale = HEIGHT / largura_planta
+    # HEIGHT = SIMULATION_SIZE
+    # WIDTH = int(HEIGHT * (floor_plan_length / floor_plan_width))
+    # scale = HEIGHT / floor_plan_width
     # precision = LARGURA_EDIFICIO / WIDTH
 
     # RE-carrega utilizando a escala apropriada
@@ -1048,10 +1048,10 @@ if __name__ == '__main__':
     max_inter = 600
     # max_inter = 600 * (1 + num_aps)
     # max_inter = 600 * (10 * num_aps)
-    # max_inter = TOTAL_PONTOS * 0.2
+    # max_inter = TOTAL_OF_POINTS * 0.2
 
     # p - Máximo de perturbações
-    max_pertub = 5
+    max_disturbances = 5
 
     # DISTURBANCE_RADIUS = WIDTH * 0.0100
     # DISTURBANCE_RADIUS = WIDTH * 0.0175
