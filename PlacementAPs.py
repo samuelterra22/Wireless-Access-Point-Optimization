@@ -1,23 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-import math
-import profile
 import random as rd
-import cProfile
-
-import ezdxf
-import numpy as np
-import pygame
-import matplotlib.pyplot as plt
-
-from datetime import datetime
-
-from math import sqrt, log10, exp
+import sys
 from random import random
 
-import sys
+import ezdxf
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import pygame
 from colour import Color
+from math import sqrt, log10, exp
 from numba import cuda, jit
 
 """
@@ -289,7 +283,7 @@ def propagation_model(x, y, apX, apY, floor_plan):
     if d == 0:
         d = 1
 
-    ## CUIDADO: um modelo de propagação pessimista prende o SA se a FO não for ajustada
+    # CUIDADO: um modelo de propagação pessimista prende o SA se a FO não for ajustada
 
     # value = log_distance(d, 3, 11, -72, Pt_dBm) - loss_in_wall
     # value = log_distance(d, 3,  1, -60, Pt_dBm) - loss_in_wall
@@ -305,7 +299,6 @@ def propagation_model(x, y, apX, apY, floor_plan):
 
 @jit
 def objective_function(matrix):
-    # def objective_function(x):
     """
     Função objetivo para a avaliação da solução atual.
     :param matrix: Matriz a ser avaliada.
@@ -1122,11 +1115,11 @@ def generate_summary(S_array):
 #   Main                                                                                                               #
 ########################################################################################################################
 if __name__ == '__main__':
-    BLACK   = (0, 0, 0)
-    WHITE   = (255, 255, 255)
-    RED     = (255, 0, 0)
-    GREEN   = (0, 255, 0)
-    BLUE    = (0, 0, 255)
+    BLACK = (0, 0, 0)
+    WHITE = (255, 255, 255)
+    RED = (255, 0, 0)
+    GREEN = (0, 255, 0)
+    BLUE = (0, 0, 255)
 
     ##################################################
     #  CONFIGURAÇÕES DOS EQUIPAMENTOS
