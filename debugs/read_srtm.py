@@ -3,6 +3,8 @@ import numpy as np
 SAMPLES = 1201  # Change this to 3601 for SRTM1
 
 
+# https://librenepal.com/article/reading-srtm-data-with-python/
+
 def read_elevation_from_file(hgt_file, lon, lat):
     with open(hgt_file, 'rb') as hgt_data:
         # Each data is 16bit signed integer(i2) - big endian(>)
