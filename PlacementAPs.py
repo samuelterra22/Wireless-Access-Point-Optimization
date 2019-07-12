@@ -835,6 +835,8 @@ def show_configs():
         print("\tPosicao inicial dos APs: \t\tALEATORIA")
     elif INITIAL_POSITION == CENTER:
         print("\tPosicao inicial dos APs: \t\tCENTRALIZADA (W/2, H/2)")
+    elif INITIAL_POSITION == CUSTOM:
+        print("\tPosicao inicial dos APs: \t\tCUSTOMIZADA")
 
 
 def run():
@@ -995,14 +997,14 @@ if __name__ == '__main__':
     LENGTH_BLOCK_B = 36.0
     LENGTH_BLOCK_C = 51.0
 
-    LENGTH_BUILDING = LENGTH_BLOCK_C
+    LENGTH_BUILDING = LENGTH_BLOCK_A
     # LARGURA_EDIFICIO = ???
 
     # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
-    # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
+    dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1_porta.dxf"
 
     # dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso1.dxf"
-    dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
+    # dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso2.dxf"
     # dxf_path = "./DXFs/bloco_c/com_porta/bloco_C_planta baixa_piso3.dxf"
     # dxf_path = "./DXFs/bloco_c/sem_porta/bloco_C_planta_baixa_piso1.dxf"
     # dxf_path = "./DXFs/bloco_c/sem_porta/bloco_C_planta baixa_piso2.dxf"
@@ -1112,7 +1114,7 @@ if __name__ == '__main__':
     show_configs()
     # test_propagation()
     run()
-    # fixed_aps([[40., 100.], [300., 105.], [535., 130.]])
+    # fixed_aps([[1., 210.], [300., 225.], [385., 225.], [540, 225]])
     #
     # best_solution = [
     #     [WIDTH * 0.5, HEIGHT * 0.5]
