@@ -546,9 +546,9 @@ def simulated_annealing(size, M, P, L, T0, alpha):
     s_array = np.empty([size, 2], np.float32)
 
     for i in range(size):  # VALADAO testing
-        if RANDOM_INITIAL_POSITION:
+        if INITIAL_POSITION == RANDOM:
             s_array[i] = [rd.randrange(0, WIDTH), rd.randrange(0, HEIGHT)]
-        else:
+        elif INITIAL_POSITION == CENTER:
             s_array[i] = [WIDTH * 0.5, HEIGHT * 0.5]
 
     s0 = s_array.copy()
@@ -788,7 +788,6 @@ def get_color_of_interval(x, max_value=-30, min_value=-100):
 
 
 def show_solution(s_array, py_game_display_surf_value):
-
     propagation_matrices = []
 
     for i in range(len(s_array)):
@@ -802,6 +801,8 @@ def show_solution(s_array, py_game_display_surf_value):
     print_py_game(propagation, s_array, py_game_display_surf_value)
 
     draw_floor_plan(walls, py_game_display_surf_value)
+
+    pygame.display.update()
 
 
 def get_color_gradient(steps=250):
@@ -820,7 +821,7 @@ def show_configs():
     print("\tDecaimento da teperatura com α=\t\t\t" + str(alpha))
     print("\tRaio de perturbacao:\t\t\t\t" + str(int(DISTURBANCE_RADIUS)))
 
-    print("\tExecucoes do otimziador: \t\t" + str(max_SA))
+    print("\tExecucoes do otimziador: \t\t\t" + str(max_SA))
     print("\nHardware de simulacao:\t" + str(ENVIRONMENT) + "\n")
 
     print("\nSimulacao do ambiente com a seguinte configuracao:" + "\n")
@@ -830,15 +831,26 @@ def show_configs():
     print("\tQuantidade de APs:       \t\t" + str(num_aps))
     print("\tPotencia de cada APs:    \t\t" + str(pt_dbm) + " dBm")
 
-    if RANDOM_INITIAL_POSITION:
+    if INITIAL_POSITION == RANDOM:
         print("\tPosicao inicial dos APs: \t\tALEATORIA")
-    else:
+    elif INITIAL_POSITION == CENTER:
         print("\tPosicao inicial dos APs: \t\tCENTRALIZADA (W/2, H/2)")
 
 
 def run():
     best_solution = simulated_annealing(num_aps, max_inter, max_disturbances, num_max_success, initial_temperature,
                                         alpha)
+    evaluate_array(best_solution, len(best_solution))
+
+    # Gera resumo da simulação
+    generate_summary(best_solution)
+
+    print("\nDesenhando resultado da simulação...")
+    if ANIMATION_STEP_BY_STEP or ANIMATION_BEST_PLACES or ANIMATION_BESTS:
+        show_solution(best_solution, py_game_display_surf)
+
+
+def fixed_aps(best_solution):
     evaluate_array(best_solution, len(best_solution))
 
     # Gera resumo da simulação
@@ -871,6 +883,7 @@ def generate_summary(s_array):
 
     print("\n****** Gerando sumarios dos resultados da simulacao ******")
     print("Numero de APs:\t" + str(length))
+    print("Solução: ", s_array)
 
     propagation_matrices = []
     for i in range(length):
@@ -886,7 +899,7 @@ def generate_summary(s_array):
     percent_cover_above_sensitivity = (len(above_sensitivity) / total) * 100
     percent_cover_under_sensitivity = (len(under_sensitivity) / total) * 100
 
-    print("COBERTURA DE SINAL WI-FI:")
+    print("\nCOBERTURA DE SINAL WI-FI:")
     print("\t" + '{:.2f}'.format(float(percent_cover_above_sensitivity)) + "%\t com boa cobertura (sinal forte)")
     print("\t" + '{:.2f}'.format(
         float(percent_cover_under_sensitivity)) + "%\t de zonas de sombra (abaixo da sensibilidade)")
@@ -918,14 +931,14 @@ def generate_summary(s_array):
     print("\t\tsinal Bom    \t" + '{:.1f}'.format(float(percent_range_2)) + "%")
     print("\t\tsinal Ruim   \t" + '{:.1f}'.format(float(percent_range_3)) + "%")
 
-    print("\n... gerando grafico do comportamento da FO.")
-
-    # Plota gráfico da função objetivo
-    plt.plot(FOs)
-    plt.title("Comportamento do Simulated Annealing")
-    plt.ylabel('Valor da FO')
-    plt.xlabel('Solucao candidata')
-    plt.show()
+    if FOs:
+        # Plota gráfico da função objetivo
+        print("\n... gerando grafico do comportamento da FO.")
+        plt.plot(FOs)
+        plt.title("Comportamento do Simulated Annealing")
+        plt.ylabel('Valor da FO')
+        plt.xlabel('Solucao candidata')
+        plt.show()
 
 
 ########################################################################################################################
@@ -969,7 +982,11 @@ if __name__ == '__main__':
     # Quantidade de APs
     num_aps = 3
 
-    RANDOM_INITIAL_POSITION = False
+    # Constantes para controle da estratégia de posição inicial dos APs
+    RANDOM = 0
+    CENTER = 1
+    CUSTOM = 3
+    INITIAL_POSITION = CENTER
 
     ##################################################
     #  CONFIGURAÇÕES DO AMBIENTE E PLANTA-BAIXA
@@ -978,7 +995,7 @@ if __name__ == '__main__':
     LENGTH_BLOCK_B = 36.0
     LENGTH_BLOCK_C = 51.0
 
-    LENGTH_BUILDING = LENGTH_BLOCK_B
+    LENGTH_BUILDING = LENGTH_BLOCK_C
     # LARGURA_EDIFICIO = ???
 
     # dxf_path = "./DXFs/bloco_a/bloco_A_planta baixa_piso1.dxf"
@@ -1095,6 +1112,7 @@ if __name__ == '__main__':
     show_configs()
     # test_propagation()
     run()
+    # fixed_aps([[40., 100.], [300., 105.], [535., 130.]])
     #
     # best_solution = [
     #     [WIDTH * 0.5, HEIGHT * 0.5]
