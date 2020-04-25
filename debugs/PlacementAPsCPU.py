@@ -846,8 +846,8 @@ if __name__ == '__main__':
     # profile.runctx('run()', globals(), locals(),'tese')
     cProfile.run(statement='run()', filename='PlacementAPs.cprof')
 
-    ## python ../PlacementAPs.py | egrep "(tottime)|(PlacementAPs.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
+    ## python ../main.py | egrep "(tottime)|(main.py)" | tee ../cProfile/PlacementAPs.py_COM-JIT.txt
     ## cat ../cProfile/PlacementAPs.py_COM-JIT.txt | sort -k 2 -r
 
-    # python PlacementAPs.py | egrep '(ncalls)|(PlacementAPs)'
+    # python main.py | egrep '(ncalls)|(PlacementAPs)'
     # https://julien.danjou.info/blog/2015/guide-to-python-profiling-cprofile-concrete-case-carbonara
