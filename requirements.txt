@@ -4,7 +4,7 @@ ezdxf==0.12.1
 kiwisolver==1.2.0
 llvmlite==0.32.0
 matplotlib==3.2.1
-numba==0.49.0
+numba==0.49.1
 numpy==1.18.4
 pygame==2.0.0.dev6
 pyparsing==2.4.7
