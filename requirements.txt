@@ -2,7 +2,7 @@ colour==0.1.5
 cycler==0.10.0
 ezdxf==0.13.1
 kiwisolver==1.2.0
-llvmlite==0.33.0
+llvmlite==0.34.0
 matplotlib==3.3.0
 numba==0.50.1
 numpy==1.19.1
