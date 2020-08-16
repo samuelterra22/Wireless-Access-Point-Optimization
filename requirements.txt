@@ -3,7 +3,7 @@ cycler==0.10.0
 ezdxf==0.13.1
 kiwisolver==1.2.0
 llvmlite==0.34.0
-matplotlib==3.3.0
+matplotlib==3.3.1
 numba==0.50.1
 numpy==1.19.1
 pygame==2.0.0.dev10
