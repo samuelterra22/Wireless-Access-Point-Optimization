@@ -1,6 +1,6 @@
 colour==0.1.5
 cycler==0.10.0
-ezdxf==0.13.1
+ezdxf==0.14
 kiwisolver==1.2.0
 llvmlite==0.34.0
 matplotlib==3.3.2
