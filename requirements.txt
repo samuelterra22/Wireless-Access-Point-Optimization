@@ -6,7 +6,7 @@ llvmlite==0.34.0
 matplotlib==3.3.2
 numba==0.51.2
 numpy==1.19.2
-pygame==2.0.0.dev12
+pygame==2.0.0.dev16
 pyparsing==2.4.7
 python-dateutil==2.8.1
 six==1.15.0
