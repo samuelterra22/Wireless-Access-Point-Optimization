@@ -8,5 +8,5 @@ numba==0.53.1
 numpy==1.21.0
 pygame==2.0.1
 pyparsing==2.4.7
-python-dateutil==2.8.1
+python-dateutil==2.8.2
 six==1.16.0
